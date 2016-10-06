@@ -320,7 +320,7 @@ struct DSU
 };
 //DSU end
 
-//Order Stat Tree start
+//Order Stat Tree start 
 struct PBDS
 {
 	tree<ii, null_type, less<ii>, rb_tree_tag, tree_order_statistics_node_update> t;
@@ -477,7 +477,7 @@ struct NumberTheory
 };
 //End NT
 
-//Start Fenwick
+//Start Fenwick (by Christopherboo)
 struct Fenwick
 {
 	vector<ll> t;
@@ -507,7 +507,7 @@ struct Fenwick
 };
 //End Fenwick
 
-//Start FenwickRange
+//Start FenwickRange (by Christopherboo)
 struct FenwickRange
 {
 	vector<ll> fw, fw2;
@@ -552,7 +552,7 @@ struct FenwickRange
 };
 //End FenwickRange
 
-//Start Fenwick2D
+//Start Fenwick2D (by Christopherboo)
 struct Fenwick2D
 {
 	int R, C;
@@ -596,7 +596,7 @@ struct Fenwick2D
 };
 //End Fenwick2D
 
-//Begin Matrix
+//Begin Matrix (from Um_nik's submission)
 template<int N> struct Matrix
 {
 	ll a[N][N];
@@ -633,6 +633,7 @@ template<int N> struct Matrix
 //End Matrix
 
 //Begin suffix auto
+//Most of this are from here : https://saisumit.wordpress.com/2016/01/26/suffix-automaton/
 template<int MAXLEN> struct SuffixAutomaton //check if it works (works only for 'a' - 'z', for general alphabet sets see code from SUBST1
 {
 	struct state 
