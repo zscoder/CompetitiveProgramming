@@ -867,112 +867,136 @@ template<int MAXLEN> struct SuffixAutomaton //check if it works (works only for 
 //End suffix auto
 
 //Begin Suffix + LCP Array
-struct suffix
-{
-	int index; // To store original index
-	int rank[2]; // To store ranks and next rank pair
-};
+string globalstr;
 
-int cmp(suffix a, suffix b)
+bool smaller_first_char(int a, int b)
 {
-	return (a.rank[0] == b.rank[0])? (a.rank[1] < b.rank[1] ?1: 0):(a.rank[0] < b.rank[0] ?1: 0);
+  return globalstr[a] < globalstr[b];
 }
 
+//pos[i] is the real suffix array
 struct SuffixLCPArray //mostly/all from geeksforgeeks, to work for general alphabet remove the - 'a'
 {	
-	vector<suffix> suffixes;
-	vi suffixArr;
-	vi ind;
-	void buildSA(const string& txt)
+	vi rnk, pos, cnt, nxt;
+	vector<bool> bh, b2h;
+	
+	void buildSA(const string& str)
 	{
-		int n = txt.length();
-		// A structure to store suffixes and their indexes
-		
-		suffixes.resize(n);
-		// Store suffixes and their indexes in an array of structures.
-		// The structure is needed to sort the suffixes alphabatically
-		// and maintain their old indexes while sorting
-		for (int i = 0; i < n; i++)
+		globalstr = str;
+		int n = str.length();
+		rnk.assign(n,0);
+		pos.assign(n,0);
+		cnt.assign(n,0);
+		nxt.assign(n,0);
+		bh.assign(n,0);
+		b2h.assign(n,0);
+		for (int i=0; i<n; ++i)
 		{
-			suffixes[i].index = i;
-			suffixes[i].rank[0] = txt[i] - 'a';
-			suffixes[i].rank[1] = ((i+1) < n)? (txt[i + 1] - 'a'): -1;
+			pos[i] = i;
 		}
-	 
-		// Sort the suffixes using the comparison function
-		// defined above.
-		sort(suffixes.begin(), suffixes.end(), cmp);
-	 
-		// At his point, all suffixes are sorted according to first
-		// 2 characters.  Let us sort suffixes according to first 4
-		// characters, then first 8 and so on
-		ind.resize(n+1); // This array is needed to get the index in suffixes[]
-					 // from original index.  This mapping is needed to get
-					 // next suffix.
-		for (int k = 4; k < 2*n; k = k*2)
+		sort(pos.begin(), pos.end(), smaller_first_char);
+		  //{pos contains the list of suffixes sorted by their first
+		  //character}
+		 
+		for (int i=0; i<n; ++i)
 		{
-			// Assigning rank and index values to first suffix
-			int rank = 0;
-			int prev_rank = suffixes[0].rank[0];
-			suffixes[0].rank[0] = rank;
-			ind[suffixes[0].index] = 0;
-	 
-			// Assigning rank to suffixes
-			for (int i = 1; i < n; i++)
-			{
-				// If first rank and next ranks are same as that of previous
-				// suffix in array, assign the same new rank to this suffix
-				if (suffixes[i].rank[0] == prev_rank && suffixes[i].rank[1] == suffixes[i-1].rank[1])
-				{
-					prev_rank = suffixes[i].rank[0];
-					suffixes[i].rank[0] = rank;
-				}
-				else // Otherwise increment rank and assign
-				{
-					prev_rank = suffixes[i].rank[0];
-					suffixes[i].rank[0] = ++rank;
-				}
-				ind[suffixes[i].index] = i;
-			}
-	 
-			// Assign next rank to every suffix
-			for (int i = 0; i < n; i++)
-			{
-				int nextindex = suffixes[i].index + k/2;
-				suffixes[i].rank[1] = (nextindex < n)? suffixes[ind[nextindex]].rank[0]: -1;
-			}
-	 
-			// Sort the suffixes according to first k characters
-			sort(suffixes.begin(), suffixes.end(), cmp);
+			bh[i] = i == 0 || str[pos[i]] != str[pos[i-1]];
+			b2h[i] = false;
 		}
-	 
-		// Store indexes of all sorted suffixes in the suffix array
-		suffixArr.resize(n+1);
-		for (int i = 0; i < n; i++)
+		 
+		for (int h = 1; h < n; h <<= 1)
 		{
-			suffixArr[i] = suffixes[i].index;
+			//{bh[i] == false if the first h characters of pos[i-1] ==
+			// the first h characters of pos[i]}
+			int buckets = 0;
+			for (int i=0, j; i < n; i = j)
+			{
+				j = i + 1;
+				while (j < n && !bh[j]) j++;
+				nxt[i] = j;
+				buckets++;
+			}
+			if (buckets == n) break; // We are done! Lucky bastards!
+			//{suffixes are separted in buckets containing strings
+			// starting with the same h characters}
+		 
+			for (int i = 0; i < n; i = nxt[i])
+			{
+			  cnt[i] = 0;
+			  for (int j = i; j < nxt[i]; ++j)
+			  {
+				rnk[pos[j]] = i;
+			  }
+			}
+		 
+			cnt[rnk[n - h]]++;
+			b2h[rnk[n - h]] = true;
+			for (int i = 0; i < n; i = nxt[i])
+			{
+			  for (int j = i; j < nxt[i]; ++j)
+			  {
+				int s = pos[j] - h;
+				if (s >= 0){
+				  int head = rnk[s];
+				  rnk[s] = head + cnt[head]++;
+				  b2h[rnk[s]] = true;
+				}
+			  }
+			  for (int j = i; j < nxt[i]; ++j)
+			  {
+				int s = pos[j] - h;
+				if (s >= 0 && b2h[rnk[s]]){
+				  for (int k = rnk[s]+1; !bh[k] && b2h[k]; k++)
+				  {
+					  b2h[k] = false;
+				  }
+				}
+			  }
+			}
+			for (int i=0; i<n; ++i)
+			{
+			  pos[rnk[i]] = i;
+			  bh[i] = (bh[i] || b2h[i]);
+			}
+	    }
+		for (int i=0; i<n; ++i)
+		{
+			rnk[pos[i]] = i;
 		}
 	}
 	
 	vi rank;
 	vi lcp;
+	
+	void reset()
+	{
+		rnk.clear(); pos.clear(); bh.clear(); b2h.clear(); cnt.clear(); nxt.clear(); rank.clear(); lcp.clear();
+	}
+	// - height[i] = length of the longest common prefix of suffix
+	//   pos[i] and suffix pos[i-1]
+	// - height[0] = 0
 	void buildLCP(string &s)
 	{
-		int n=s.size(),k=0;
-		lcp.assign(n+1, 0);
-		rank.assign(n,0);
-
-		for(int i=0; i<n; i++) rank[suffixArr[i]]=i;
-
-		for(int i=0; i<n; i++, k?k--:0)
+		int n = s.length();
+		lcp.assign(n+1,0);
+		for (int i=0; i<n; ++i) rnk[pos[i]] = i;
+		lcp[0] = 0;
+		for (int i=0, h=0; i<n; ++i)
 		{
-			if(rank[i]==n-1) {k=0; continue;}
-			int j=suffixArr[rank[i]+1];
-			while(i+k<n && j+k<n && s[i+k]==s[j+k]) k++;
-			lcp[rank[i]]=k;
+			if (rnk[i] > 0)
+			{
+			  int j = pos[rnk[i]-1];
+			  while (i + h < n && j + h < n && s[i+h] == s[j+h])
+			  {
+				  h++;
+			  }
+			  lcp[rnk[i]] = h;
+			  if (h > 0) h--;
+			}
 		}
 	}
 };
+
 //End Suffix + LCP Array
 
 /* TO-DO LIST :
