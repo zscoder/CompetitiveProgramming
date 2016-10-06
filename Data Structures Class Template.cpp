@@ -996,14 +996,52 @@ struct SuffixLCPArray //mostly/all from geeksforgeeks, to work for general alpha
 		}
 	}
 };
-
 //End Suffix + LCP Array
+
+//Start Convex Hull Trick (by christopherboo)
+struct ConvexHull 
+{
+    struct Line 
+    {
+        ll m, c;
+
+        Line (ll _m, ll _c) : m(_m), c(_c) {}
+
+        ll pass(ll x) {
+            return m * x + c;
+        }
+    };
+    #define sz(x) (int)(x).size()
+    deque<Line> d;
+    bool irrelevant(Line Z) 
+    {
+        if (sz(d) < 2) return false;
+    
+        Line X = d[sz(d)-2], Y = d[sz(d)-1];
+
+        return (X.c - Z.c) * (Y.m - X.m) <= (X.c - Y.c) * (Z.m - X.m);
+    }
+    void push_line(ll m, ll c) 
+    {
+        Line l = Line(m,c);
+        while (irrelevant(l)) d.pop_back();
+        d.push_back(l);
+    }
+    ll query(ll x) {
+        while (sz(d) > 1 && (d[0].c - d[1].c <= x * (d[1].m - d[0].m))) d.pop_front();
+        return d.front().pass(x);
+    }
+};
+//End Convex Hull Trick
+
+//Tree
+
+//End Tree
 
 /* TO-DO LIST :
 1. SQRT DECOMP (MO)
 2. SQRT DECOMP (REAL)
 3. TREE (LCA, HLD)
-8. SUFFIX ARRAY, LCP ARRAY
 12. OTHER STRING STRUCTS SUCH AS PALINDROMIC TREE
 14. FFT
 15. Karatsuba
