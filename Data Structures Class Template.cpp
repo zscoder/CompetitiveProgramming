@@ -878,7 +878,7 @@ int cmp(suffix a, suffix b)
 	return (a.rank[0] == b.rank[0])? (a.rank[1] < b.rank[1] ?1: 0):(a.rank[0] < b.rank[0] ?1: 0);
 }
 
-struct SuffixLCPArray //mostly/all from geeksforgeeks
+struct SuffixLCPArray //mostly/all from geeksforgeeks, to work for general alphabet remove the - 'a'
 {	
 	vector<suffix> suffixes;
 	vi suffixArr;
@@ -888,7 +888,7 @@ struct SuffixLCPArray //mostly/all from geeksforgeeks
 		int n = txt.length();
 		// A structure to store suffixes and their indexes
 		
-		suffixes.resize(n+1);
+		suffixes.resize(n);
 		// Store suffixes and their indexes in an array of structures.
 		// The structure is needed to sort the suffixes alphabatically
 		// and maintain their old indexes while sorting
