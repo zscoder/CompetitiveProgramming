@@ -1382,8 +1382,8 @@ struct Tree
 	void calceuler()
 	{
 		eulercnt = 0;
-		level.assign(2*n, 0);
-		euler.assign(2*n, 0);
+		level.assign(2*n+1, 0);
+		euler.assign(2*n+1, 0);
 		depth.assign(n, 0);
 		firstocc.resize(n);
 		dfseuler(0, -1);
@@ -1404,22 +1404,22 @@ struct Tree
 		{
 			for(int i = 0; i < eulercnt; i++)
 			{
-				rmqtable[i][j] = eulercnt;
+				rmqtable[j][i] = eulercnt;
 				if(i + (1<<j) - 1 < eulercnt)
 				{
 					if(j == 0)
 					{
-						rmqtable[i][j] = i;
+						rmqtable[j][i] = i;
 					}
 					else
 					{
-						if(level[rmqtable[i][j - 1]] < level[rmqtable[i + (1<<(j-1))][j - 1]])
+						if(level[rmqtable[j - 1][i]] < level[rmqtable[j-1][i + (1<<(j-1))]])
 						{
-							rmqtable[i][j] = rmqtable[i][j-1];
+							rmqtable[j][i] = rmqtable[j-1][i];
 						}
 						else
 						{
-							rmqtable[i][j] = rmqtable[i + (1<<(j-1))][j - 1];
+							rmqtable[j][i] = rmqtable[j-1][i + (1<<(j-1))];
 						}
 					}
 				}
@@ -1431,20 +1431,20 @@ struct Tree
 	{
 		int k = 31 - __builtin_clz(r-l);
 		//cout << l << ' ' << r << ' ' << rmqtable[l][k] << ' ' << rmqtable[r - (1<<k) + 1][k] << endl;
-		if(level[rmqtable[l][k]] < level[rmqtable[r - (1<<k) + 1][k]])
+		if(level[rmqtable[k][l]] < level[rmqtable[k][r - (1<<k) + 1]])
 		{
-			return rmqtable[l][k];
+			return rmqtable[k][l];
 		}
 		else
 		{
-			return rmqtable[r - (1<<k) + 1][k];
+			return rmqtable[k][r - (1<<k) + 1];
 		}
 	}
 
 	int lcaeuler(int u, int v)
 	{
 		if(firstocc[u] > firstocc[v]) swap(u, v);
-		//cout << firstocc[u] << ' ' << firstocc[v] << ' ' << rmq(firstocc[u], firstocc[v]) << ' ' << euler[rmq(firstocc[u], firstocc[v])] << endl;
+		//cerr << firstocc[u] << ' ' << firstocc[v] << ' ' << rmq(firstocc[u], firstocc[v]) << ' ' << euler[rmq(firstocc[u], firstocc[v])] << endl;
 		return euler[rmq(firstocc[u], firstocc[v])];
 	}
 	
