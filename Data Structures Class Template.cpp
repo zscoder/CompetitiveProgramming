@@ -1,4 +1,5 @@
 #include <bits/stdc++.h>
+#include <bits/stdc++.h>
 #include <ext/pb_ds/assoc_container.hpp>
 #include <ext/pb_ds/tree_policy.hpp>
 
@@ -608,52 +609,49 @@ struct Fenwick2D
 //End Fenwick2D
 
 //Begin Matrix (from Um_nik's submission)
-template<int N> struct Matrix
-{
-	ll a[N][N];
-	
-	Matrix()
-	{
-		for (int i = 0; i < N; i++)
-			for (int j = 0; j < N; j++)
-				a[i][j] = (i == j ? 1 : 0);
-	}
+const int mod = int(1e9) + 7;
+const int DIM = 52;
 
-	Matrix operator * (const Matrix &A) const
-	{
-		Matrix R = Matrix();
-		for (int i = 0; i < N; i++)
-			for (int j = 0; j < N; j++)
-			{
-				R.a[i][j] = 0;
-				for (int h = 0; h < N; h++)
-				{
-					R.a[i][j] += a[i][h] * A.a[h][j];
-				}
-			}
-		return R;
+struct Matrix {
+  int a[DIM][DIM];
+  int *operator [] (int r) { return a[r]; };
+
+  Matrix(int x = 0) {
+    memset(a, 0, sizeof a);
+    if (x)
+    {
+		for(int i = 0; i < DIM; i++) a[i][i] = x;
 	}
-	
-	Matrix operator + (const Matrix &A) const
-	{
-		Matrix R = Matrix();
-		for (int i = 0; i < N; i++)
+  }
+} const I(1);
+
+Matrix operator * (Matrix A, Matrix B) {
+  const ll mod2 = ll(mod) * mod;
+  Matrix C;
+ for(int i = 0; i < DIM; i++)
+ {
+	 for(int j = 0; j < DIM; j++)
+	 {
+		ll w = 0;
+		for(int k = 0; k < DIM; k++)
 		{
-			for (int j = 0; j < N; j++)
-			{
-				R.a[i][j] = a[i][j] + A.a[i][j];
-			}
+			w += ll(A[i][k]) * B[k][j];
+			if (w >= mod2) w -= mod2;
 		}
-		return R;
+    C[i][j] = w % mod;
 	}
-	
-	Matrix binpow(Matrix A, ll p)
-	{
-		if(p == 0) return Matrix();
-		if(p == 2 || (p&1)) return A*binpow(A, p - 1);
-		return binpow(binpow(A, p/2), 2);
-	}
-};
+  }
+  return C;
+}
+
+Matrix operator ^ (Matrix A, ll b) {
+  Matrix R = I;
+  for (; b > 0; b /= 2) {
+    if (b % 2) R = R*A;
+    A = A*A;
+  }
+  return R;
+}
 //End Matrix
 
 //Begin suffix auto
@@ -3086,6 +3084,107 @@ struct MinCostFlow{
 };
 //End mincostflow
 
+//Start mincostflowSPFA
+struct Edge{
+    int u, v;
+    long long cap, cost;
+
+    Edge(int _u, int _v, long long _cap, long long _cost){
+        u = _u; v = _v; cap = _cap; cost = _cost;
+    }
+};
+
+struct MinCostFlow{
+    int n, s, t;
+    long long flow, cost;
+    vector<vector<int> > graph;
+    vector<Edge> e;
+    vector<long long> dist;
+    vector<int> parent;
+
+    MinCostFlow(int _n){
+        // 0-based indexing
+        n = _n;
+        graph.assign(n, vector<int> ());
+    }
+
+    void addEdge(int u, int v, long long cap, long long cost, bool directed = true){
+        graph[u].push_back(e.size());
+        e.push_back(Edge(u, v, cap, cost));
+
+        graph[v].push_back(e.size());
+        e.push_back(Edge(v, u, 0, -cost));
+
+        if(!directed)
+            addEdge(v, u, cap, cost, true);
+    }
+
+    pair<long long, long long> getMinCostFlow(int _s, int _t){
+        s = _s; t = _t;
+        flow = 0, cost = 0;
+
+        while(SPFA()){
+            flow += sendFlow(t, 1LL<<62);
+        }
+
+        return make_pair(flow, cost);
+    }
+
+    // not sure about negative cycle
+    bool SPFA(){
+        parent.assign(n, -1);
+        dist.assign(n, 1LL<<62);        dist[s] = 0;
+        vector<int> queuetime(n, 0);    queuetime[s] = 1;
+        vector<bool> inqueue(n, 0);     inqueue[s] = true;
+        queue<int> q;                   q.push(s);
+        bool negativecycle = false;
+
+
+        while(!q.empty() && !negativecycle){
+            int u = q.front(); q.pop(); inqueue[u] = false;
+
+            for(int i = 0; i < graph[u].size(); i++){
+                int eIdx = graph[u][i];
+                int v = e[eIdx].v, w = e[eIdx].cost, cap = e[eIdx].cap;
+
+                if(dist[u] + w < dist[v] && cap > 0){
+                    dist[v] = dist[u] + w;
+                    parent[v] = eIdx;
+
+                    if(!inqueue[v]){
+                        q.push(v);
+                        queuetime[v]++;
+                        inqueue[v] = true;
+
+                        if(queuetime[v] == n+2){
+                            negativecycle = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return dist[t] != (1LL<<62);
+    }
+
+    long long sendFlow(int v, long long curFlow){
+        if(parent[v] == -1)
+            return curFlow;
+        int eIdx = parent[v];
+        int u = e[eIdx].u, w = e[eIdx].cost;
+
+        long long f = sendFlow(u, min(curFlow, e[eIdx].cap));
+
+        cost += f*w;
+        e[eIdx].cap -= f;
+        e[eIdx^1].cap += f;
+
+        return f;
+    }
+};
+//end mincostflowSPFA
+
 //Start Z_{2} gausselim
 struct gausselim
 {
@@ -3128,12 +3227,297 @@ struct gausselim
 };
 //End Z_{2} gausselim
 
+//FFT
+typedef complex<double> base;
+const double PI = 3.14159265359;
+
+struct FFT
+{
+	void fft(vector<base>& a, bool inv)
+	{
+		int n = int(a.size());
+		if(n == 1) return ;
+		vector<base> l(n/2), r(n/2);
+		for(int i = 0, j = 0; i < n; i += 2, ++j)
+		{
+			l[j] = a[i];
+			r[j] = a[i + 1];
+		}
+		//l contains the even polynomial, r contains the odd polynomial
+		fft(l, inv); fft(r, inv);
+		double ang = 2*PI/n;
+		if(inv) ang*=-1;
+		base w(1); 
+		base rt(cos(ang), sin(ang));
+		for(int i = 0; i < n/2; i++)
+		{
+			a[i] = l[i] + w*r[i];
+			a[i+n/2] = l[i] - w*r[i];
+			if(inv)
+			{
+				a[i] /= 2; a[i+n/2] /= 2;
+			}
+			w *= rt;
+		}
+	}
+
+	void mult(vector<int> &a, vector<int> &b, vector<int> &r)
+	{
+		int n = 1;
+		while(n < max(a.size(), b.size())) n <<= 1;
+		n <<= 1;
+		vector<base> ffa; vector<base> ffb;
+		base zero(0);
+		ffa.assign(n, zero); ffb.assign(n, zero);
+		for(int i = n - a.size(); i < n; i++)
+		{
+			ffa[i] = a[i-(n-a.size())];
+		}
+		for(int i = n - b.size(); i < n; i++)
+		{
+			ffb[i] = b[i-(n-b.size())];
+		}
+		reverse(ffa.begin(), ffa.end());
+		reverse(ffb.begin(), ffb.end());
+		fft(ffa, 0); fft(ffb, 0); //fft
+		for(int i = 0; i < n; i++)
+		{
+			ffa[i] *= ffb[i]; //convolution
+		}
+		fft(ffa, 1); //inverse fft
+		r.resize(n);
+		for(int i = 0; i < n; i++)
+		{
+			r[i] = int(ffa[i].real() + 0.5);
+		}
+		reverse(r.begin(), r.end());
+	}
+};
+//End FFT
+
+//FFT Pro
+#define FOR(i, a, b) for (int i = (a); i < (b); ++i)
+#define REP(i, n) FOR(i, 0, n)
+namespace FFT2
+{
+  const int MAX = 1 << 20;
+  const double PI = 3.14159265359;
+  typedef ll value;
+  typedef complex<double> comp;
+
+  int N;
+  comp omega[MAX];
+  comp a1[MAX], a2[MAX];
+  comp z1[MAX], z2[MAX];
+
+  void fft(comp *a, comp *z, int m = N) {
+    if (m == 1) {
+      z[0] = a[0];
+    } else {
+      int s = N/m;
+      m /= 2;
+
+      fft(a, z, m);
+      fft(a+s, z+m, m);
+
+      REP(i, m) {
+        comp c = omega[s*i] * z[m+i];
+        z[m+i] = z[i] - c;
+        z[i] += c;
+      }
+    }
+  }
+
+  void mult(value *a, value *b, value *c, int len) {
+    N = 2*len;
+    while (N & (N-1)) ++N;
+    assert(N <= MAX);
+
+    REP(i, N) a1[i] = 0;
+    REP(i, N) a2[i] = 0;
+    REP(i, len) a1[i] = a[i];
+    REP(i, len) a2[i] = b[i];
+
+    REP(i, N) omega[i] = polar(1.0, 2*M_PI/N*i);
+    fft(a1, z1, N);
+    fft(a2, z2, N);
+
+    REP(i, N) omega[i] = comp(1, 0) / omega[i];
+    REP(i, N) a1[i] = z1[i] * z2[i] / comp(N, 0);
+    fft(a1, z1, N);
+
+    REP(i, 2*len) c[i] = round(z1[i].real());
+  }
+
+  void mult_mod(ll *a, ll *b, ll *c, int len, int mod) {
+    static ll a0[MAX], a1[MAX];
+    static ll b0[MAX], b1[MAX];
+    static ll c0[MAX], c1[MAX], c2[MAX];
+
+    REP(i, len) a0[i] = a[i] & 0xFFFF;
+    REP(i, len) a1[i] = a[i] >> 16;
+
+    REP(i, len) b0[i] = b[i] & 0xFFFF;
+    REP(i, len) b1[i] = b[i] >> 16;
+
+    FFT2::mult(a0, b0, c0, len);
+    FFT2::mult(a1, b1, c2, len);
+
+    REP(i, len) a0[i] += a1[i];
+    REP(i, len) b0[i] += b1[i];
+    FFT2::mult(a0, b0, c1, len);
+    REP(i, 2*len) c1[i] -= c0[i] + c2[i];
+
+    REP(i, 2*len) c1[i] %= mod;
+    REP(i, 2*len) c2[i] %= mod;
+    REP(i, 2*len) c[i] = (c0[i] + (c1[i] << 16) + (c2[i] << 32)) % mod;
+  }
+}
+//FFT Pro End
+
+//Monotone Queue
+template<class T> struct MaxQ {
+  deque<T> D, Q;
+
+  void push(T x) {
+    while (!D.empty() && x > D.back()) D.pop_back(); // Change to `<` for MinQ
+    D.push_back(x);
+    Q.push_back(x);
+  }
+
+  void pop() {
+    if (D.front() == Q.front()) D.pop_front();
+    Q.pop_front();
+  }
+
+  T top()   { return D.front(); }
+  T front() { return Q.front(); }
+  T empty() { return Q.empty(); }
+  T size()  { return Q.size();  }
+};
+//End Monotone Queue
+
+//String Hash Start (taken from cgy4ever)
+string T;
+namespace H2 {
+ 
+	long long mod = 1000000009LL;
+ 
+	long long power(long long a, long long b)
+	{
+		long long ret = 1;
+		while(b)
+		{
+			if(b&1)
+				ret = (ret * a) % mod;
+			a = (a * a) % mod;
+			b /= 2;
+		}
+		return ret;
+	}
+ 
+ 
+	long long inv(long long x)
+	{
+		return power(x, mod - 2);
+	}
+ 
+	long long base = 10000019;
+	long long val[100001];
+	long long invPow[100001];
+ 
+	long long getHash(int start, int len)
+	{
+		long long v = val[start + len] - val[start];
+		v %= mod;
+		if(v < 0) v += mod;
+		v *= invPow[start];
+		v %= mod;
+		return v;
+	}
+ 
+ 
+ 
+	void prepare()
+	{
+		invPow[0] = 1;
+		invPow[1] = inv(base);
+		for(int i = 2; i <= 100000; i++)
+			invPow[i] = (invPow[i-1] * invPow[1]) % mod;
+		val[0] = 0;
+		long long weight = 1;
+		for(int i = 0; i < T.length(); i++)
+		{
+			val[i+1] = (val[i] + (long long)T[i] * weight) % mod;
+			weight = (weight * base) % mod;
+		}
+	}
+ 
+}
+ 
+ 
+namespace H1 {
+ 
+	long long mod = 1000000007LL;
+ 
+	long long power(long long a, long long b)
+	{
+		long long ret = 1;
+		while(b)
+		{
+			if(b&1)
+				ret = (ret * a) % mod;
+			a = (a * a) % mod;
+			b /= 2;
+		}
+		return ret;
+	}
+ 
+ 
+	long long inv(long long x)
+	{
+		return power(x, mod - 2);
+	}
+ 
+	long long base = 22222223;
+	long long val[100001];
+	long long invPow[100001];
+ 
+	long long getHash(int start, int len)
+	{
+		long long v = val[start + len] - val[start];
+		v %= mod;
+		if(v < 0) v += mod;
+		v *= invPow[start];
+		v %= mod;
+		return v;
+	}
+ 
+ 
+ 
+	void prepare()
+	{
+		invPow[0] = 1;
+		invPow[1] = inv(base);
+		for(int i = 2; i <= 100000; i++)
+			invPow[i] = (invPow[i-1] * invPow[1]) % mod;
+		val[0] = 0;
+		long long weight = 1;
+		for(int i = 0; i < T.length(); i++)
+		{
+			val[i+1] = (val[i] + (long long)T[i] * weight) % mod;
+			weight = (weight * base) % mod;
+		}
+	}
+ 
+}
+//End string hash
+
 /* TO-DO LIST :
 1. SQRT DECOMP (MO)
 2. SQRT DECOMP (REAL)
 3. TREE (HLD, centroid?)
 12. OTHER STRING STRUCTS SUCH AS PALINDROMIC TREE, MANACHAR, Z?
-14. FFT
 15. Karatsuba
 16. Other Flow Algo
 17. KMP
