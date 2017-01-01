@@ -125,7 +125,7 @@ template<typename TT, int MX, int LG, ll INF> struct SparseTable //Warning : Cha
 		{
 			for(ll i = 0; i < MX; i++)
 			{
-				st[i][j] = INF;
+				st[j][i] = INF;
 				if(i + (1<<j) - 1 < MX)
 				{
 					if(j == 0) st[j][i] = initial[i];
@@ -294,6 +294,7 @@ struct DSU
 	
 	void reset(int n)
 	{
+		dsu.clear();
 		S = n;
 		for(int i = 0; i < n; i++)
 		{
@@ -485,6 +486,38 @@ struct NumberTheory
 		ll ph = phi(mod);
 		ph--;
 		return modpow(a, ph, mod);
+	}
+	
+	void getpf(vector<ii>& pf, ll n)
+	{
+		for(ll i = 0; primes[i]*primes[i] <= n; i++)
+		{
+			int cnt = 0;
+			while(n%primes[i]==0)
+			{
+				n/=primes[i]; cnt++;
+			}
+			pf.pb(ii(primes[i], cnt));
+		}
+		if(n>1)
+		{
+			pf.pb(ii(n, 1));
+		}
+	}
+
+	//ll op;
+	void getDiv(vector<ll>& div, vector<ii>& pf, ll n, int i)
+	{
+		//op++;
+		ll x, k;
+		if(i >= pf.size()) return ;
+		x = n;
+		for(k = 0; k <= pf[i].se; k++)
+		{
+			if(i==int(pf.size())-1) div.pb(x);
+			getDiv(div, pf, x, i + 1);
+			x *= pf[i].fi;
+		}
 	}
 };
 //End NT
@@ -1327,7 +1360,7 @@ struct Tree
 			int v = adj[u][i].v;
 			if(v == p) continue;
 			dfssub(v, u);
-			subsize[v] += subsize[u];
+			subsize[u] += subsize[v];
 		}
 	}
 	
@@ -3512,6 +3545,480 @@ namespace H1 {
  
 }
 //End string hash
+
+//Max Xor Query
+class MaxXORQuery {
+
+private:
+    
+    vector<vector<int> > jump;
+    vector<int> newNode;
+ 
+public:
+ 
+    vector<int> numbers;
+    
+    MaxXORQuery () {
+        jump.resize(1);
+        jump[0].resize(2);
+        jump[0][0] = jump[0][1] = 0;
+        newNode.resize(2);
+        newNode[0] = newNode[1] = 0;
+    }
+    
+    void swapWith (MaxXORQuery& other) {
+        jump.swap(other.jump);
+        newNode.swap(other.newNode);
+        numbers.swap(other.numbers);
+    }
+    
+    void addNumber (int number) {
+        int pos = 0;
+        for(int i = 30; i + 1; i--) {
+            int bit = ((number & (1 << i)) > 0);
+            if (jump[pos][bit] == 0) {
+                jump.push_back(newNode);
+                jump[pos][bit] = (int)jump.size() - 1;
+                pos = (int)jump.size() - 1;
+            } else
+                pos = jump[pos][bit];
+        }
+        numbers.push_back(number);
+    }
+    
+    void clear () {
+        jump.size();
+        numbers.size();
+    }
+    
+    int getMaxXORWith (int number) {
+        int pos = 0;
+        int result = 0;
+        for(int i = 30; i + 1; i--) {
+            int bit = ((number & (1 << i)) > 0);
+            if (jump[pos][bit ^ 1] != 0) {
+                pos = jump[pos][bit ^ 1];
+                result += (1 << i);
+            } else
+                pos = jump[pos][bit];
+        }
+        return result;
+    }
+    
+    size_t size () {
+        return numbers.size();
+    }
+    
+} mxQ[100001];
+//End Max Xor Query
+
+template <class T, int V>
+class HeavyLight {
+  int parent[V], heavy[V], depth[V];
+  int root[V], treePos[V];
+  SegmentTree<T> tree;
+
+  template <class G>
+  int dfs(const G& graph, int v) {
+    int size = 1, maxSubtree = 0;
+    for (int u : graph[v]) if (u != parent[v]) {
+      parent[u] = v;
+      depth[u] = depth[v] + 1;
+      int subtree = dfs(graph, u);
+      if (subtree > maxSubtree) heavy[v] = u, maxSubtree = subtree;
+      size += subtree;
+    }
+    return size;
+  }
+
+  template <class BinaryOperation>
+  void processPath(int u, int v, BinaryOperation op) {
+    for (; root[u] != root[v]; v = parent[root[v]]) {
+      if (depth[root[u]] > depth[root[v]]) swap(u, v);
+      op(treePos[root[v]], treePos[v] + 1);
+    }
+    if (depth[u] > depth[v]) swap(u, v);
+    op(treePos[u], treePos[v] + 1);
+  }
+
+public:
+  template <class G>
+  void init(const G& graph) {
+    int n = graph.size();
+    fill_n(heavy, n, -1);
+    parent[0] = -1;
+    depth[0] = 0;
+    dfs(graph, 0);
+    for (int i = 0, currentPos = 0; i < n; ++i)
+      if (parent[i] == -1 || heavy[parent[i]] != i)
+        for (int j = i; j != -1; j = heavy[j]) {
+          root[j] = i;
+          treePos[j] = currentPos++;
+        }
+    tree.init(n);
+  }
+
+  void set(int v, const T& value) {
+    tree.set(treePos[v], value);
+  }
+
+  void modifyPath(int u, int v, const T& value) {
+    processPath(u, v, [this, &value](int l, int r) { tree.modify(l, r, value); });
+  }
+
+  T queryPath(int u, int v) {
+    T res = T();
+    processPath(u, v, [this, &res](int l, int r) { res.add(tree.query(l, r)); });
+    return res;
+  }
+};
+
+//begin SCC
+struct SCC
+{
+	const int INF = int(1e9);
+	vector<vector<int> > vec;
+	int index;
+	vector<int> idx;
+	vector<int> lowlink;
+	vector<bool> onstack;
+	stack<int> s;
+	vector<int> sccidx;
+	int scccnt;
+	vi topo;
+	
+	//lower sccidx means appear later
+	void init(int n)
+	{
+		idx.assign(n,-1);
+		index = 0;
+		onstack.assign(n,0);
+		lowlink.assign(n,INF);
+		while(!s.empty()) s.pop();
+		sccidx.assign(n,-1);
+		scccnt = 0;
+		vec.clear();
+		vec.resize(n);
+	}
+	
+	void addedge(int u, int v) //u -> v
+	{
+		vec[u].pb(v);
+	}
+	
+	void connect(int u)
+	{
+		idx[u] = index;
+		lowlink[u] = index;
+		index++;
+		s.push(u);
+		onstack[u] = true;
+		for(int i = 0; i < vec[u].size(); i++)
+		{
+			int v = vec[u][i];
+			if(idx[v] == -1)
+			{
+				connect(v);
+				lowlink[u] = min(lowlink[u], lowlink[v]);
+			}
+			else if(onstack[v])
+			{
+				lowlink[u] = min(lowlink[u], idx[v]);
+			}
+		}
+		if(lowlink[u] == idx[u])
+		{
+			while(1)
+			{
+				int v = s.top();
+				s.pop();
+				onstack[v] = false;
+				sccidx[v] = scccnt;
+				if(v == u) break;
+			}
+			scccnt++;
+		}
+	}
+	
+	void tarjan()
+	{
+		for(int i = 0; i < vec.size(); i++)
+		{
+			if(idx[i] == -1)
+			{
+				connect(i);
+			}
+		}
+	}
+	
+	void toposort() //if graph is a DAG and i just want to toposort
+	{
+		tarjan();
+		int n = vec.size();
+		topo.resize(n);
+		vector<ii> tmp;
+		for(int i = 0; i < n; i++)
+		{
+			tmp.pb(mp(sccidx[i],i));
+		}
+		sort(tmp.begin(),tmp.end());
+		reverse(tmp.begin(),tmp.end());
+		for(int i = 0; i < n; i++)
+		{
+			topo[i]=tmp[i].se;
+			if(i>0) assert(tmp[i].fi!=tmp[i-1].fi);
+		}
+	}
+};
+//end SCC
+
+//begin Link-Cut Tree
+struct Node
+{   int sz, label; /* size, label */
+    Node *p, *pp, *l, *r; /* parent, path-parent, left, right pointers */
+    Node() { p = pp = l = r = 0; }
+};
+
+void update(Node *x)
+{   x->sz = 1;
+    if(x->l) x->sz += x->l->sz;
+    if(x->r) x->sz += x->r->sz;
+}
+
+void rotr(Node *x)
+{   Node *y, *z;
+    y = x->p, z = y->p;
+    if((y->l = x->r)) y->l->p = y;
+    x->r = y, y->p = x;
+    if((x->p = z))
+    {   if(y == z->l) z->l = x;
+        else z->r = x;
+    }
+    x->pp = y->pp;
+    y->pp = 0;
+    update(y);
+}
+
+void rotl(Node *x)
+{   Node *y, *z;
+    y = x->p, z = y->p;
+    if((y->r = x->l)) y->r->p = y;
+    x->l = y, y->p = x;
+    if((x->p = z))
+    {   if(y == z->l) z->l = x;
+        else z->r = x;
+    }
+    x->pp = y->pp;
+    y->pp = 0;
+    update(y);
+}
+
+void splay(Node *x)
+{   Node *y, *z;
+    while(x->p)
+    {   y = x->p;
+        if(y->p == 0)
+        {   if(x == y->l) rotr(x);
+            else rotl(x);
+        }
+        else
+        {   z = y->p;
+            if(y == z->l)
+            {   if(x == y->l) rotr(y), rotr(x);
+                else rotl(x), rotr(x);
+            }
+            else
+            {   if(x == y->r) rotl(y), rotl(x);
+                else rotr(x), rotl(x);
+            }
+        }
+    }
+    update(x);
+}
+
+Node *access(Node *x)
+{   splay(x);
+    if(x->r)
+    {   x->r->pp = x;
+        x->r->p = 0;
+        x->r = 0;
+        update(x);
+    }
+
+    Node *last = x;
+    while(x->pp)
+    {   Node *y = x->pp;
+        last = y;
+        splay(y);
+        if(y->r)
+        {   y->r->pp = y;
+            y->r->p = 0;
+        }
+        y->r = x;
+        x->p = y;
+        x->pp = 0;
+        update(y);
+        splay(x);
+    }
+    return last;
+}
+
+Node *root(Node *x)
+{   access(x);
+    while(x->l) x = x->l;
+    splay(x);
+    return x;
+}
+
+void cut(Node *x)
+{   access(x);
+    x->l->p = 0;
+    x->l = 0;
+    update(x);
+}
+
+void link(Node *x, Node *y)
+{   access(x);
+    access(y);
+    x->l = y;
+    y->p = x;
+    update(x);
+}
+
+Node *lca(Node *x, Node *y)
+{   access(x);
+    return access(y);
+}
+
+int depth(Node *x)
+{   access(x);
+    return x->sz - 1;
+}
+
+class LinkCut
+{   Node *x;
+
+    public:
+    LinkCut(int n)
+    {   x = new Node[n];
+        for(int i = 0; i < n; i++)
+        {   x[i].label = i;
+            update(&x[i]);
+        }
+    }
+
+    virtual ~LinkCut()
+    {   delete[] x;
+    }
+
+    void link(int u, int v)
+    {   ::link(&x[u], &x[v]);
+    }
+
+    void cut(int u)
+    {   ::cut(&x[u]);
+    }
+
+    int root(int u)
+    {   return ::root(&x[u])->label;
+    }
+
+    int depth(int u)
+    {   return ::depth(&x[u]);
+    }
+	
+	void del(int u, int v)
+	{
+		if(depth(u)<depth(v)) swap(u,v);
+		cut(u);
+	}
+	
+    int lca(int u, int v)
+    {   return ::lca(&x[u], &x[v])->label;
+    }
+};
+//end Link-Cut Tree
+
+//start Hopkraft Matching
+const int MAXN1 = 50000;
+const int MAXN2 = 50000;
+const int MAXM = 150000;
+
+int n1, n2, edges, last[MAXN1], pre[MAXM], head[MAXM];
+int matching[MAXN2], dist[MAXN1], Q[MAXN1];
+bool used[MAXN1], vis[MAXN1];
+
+void init(int _n1, int _n2) 
+{
+    n1 = _n1;
+    n2 = _n2;
+    edges = 0;
+    fill(last, last + n1, -1);
+}
+
+void addEdge(int u, int v) 
+{
+    head[edges] = v;
+    pre[edges] = last[u];
+    last[u] = edges++;
+}
+
+void bfs() 
+{
+    fill(dist, dist + n1, -1);
+    int sizeQ = 0;
+    for (int u = 0; u < n1; ++u) {
+        if (!used[u]) {
+            Q[sizeQ++] = u;
+            dist[u] = 0;
+        }
+    }
+    for (int i = 0; i < sizeQ; i++) {
+        int u1 = Q[i];
+        for (int e = last[u1]; e >= 0; e = pre[e]) {
+            int u2 = matching[head[e]];
+            if (u2 >= 0 && dist[u2] < 0) {
+                dist[u2] = dist[u1] + 1;
+                Q[sizeQ++] = u2;
+            }
+        }
+    }
+}
+
+bool dfs(int u1) 
+{
+    vis[u1] = true;
+    for (int e = last[u1]; e >= 0; e = pre[e]) {
+        int v = head[e];
+        int u2 = matching[v];
+        if (u2 < 0 || ((!vis[u2] && dist[u2] == dist[u1] + 1) && dfs(u2))) {
+            matching[v] = u1;
+            used[u1] = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+int maxMatching() 
+{
+    fill(used, used + n1, false);
+    fill(matching, matching + n2, -1);
+    for (int res = 0;;) {
+        bfs();
+        fill(vis, vis + n1, false);
+        int f = 0;
+        for (int u = 0; u < n1; ++u)
+            if (!used[u] && dfs(u))
+                ++f;
+        if (!f)
+            return res;
+        res += f;
+    }
+}
+    
+//end Matching
+//See more http://codeforces.com/blog/entry/22072
 
 /* TO-DO LIST :
 1. SQRT DECOMP (MO)
