@@ -1,5 +1,4 @@
 #include <bits/stdc++.h>
-#include <bits/stdc++.h>
 #include <ext/pb_ds/assoc_container.hpp>
 #include <ext/pb_ds/tree_policy.hpp>
 
@@ -138,6 +137,7 @@ template<typename TT, int MX, int LG, ll INF> struct SparseTable //Warning : Cha
 	TT query(int l, int r)
 	{
 		int k = 31 - __builtin_clz(r-l);
+		if(l==r) k=0;
 		return combine(st[k][l], st[k][r - (1<<k) + 1]);
 	}
 };
@@ -418,6 +418,7 @@ struct NumberTheory
 	
 	bool isprime(ll x)
 	{
+		if(x==1) return false;
 		for(ll i = 0; primes[i]*primes[i] <= x; i++)
 		{
 			if(x%primes[i]==0) return false;
@@ -497,7 +498,7 @@ struct NumberTheory
 			{
 				n/=primes[i]; cnt++;
 			}
-			pf.pb(ii(primes[i], cnt));
+			if(cnt>0) pf.pb(ii(primes[i], cnt));
 		}
 		if(n>1)
 		{
@@ -930,7 +931,7 @@ bool smaller_first_char(int a, int b)
 }
 
 //pos[i] is the real suffix array
-struct SuffixLCPArray //mostly/all from geeksforgeeks, to work for general alphabet remove the - 'a'
+struct SuffixLCPArray //to work for general alphabet remove the - 'a'
 {	
 	vi rnk, pos, cnt, nxt;
 	vector<bool> bh, b2h;
@@ -950,19 +951,13 @@ struct SuffixLCPArray //mostly/all from geeksforgeeks, to work for general alpha
 			pos[i] = i;
 		}
 		sort(pos.begin(), pos.end(), smaller_first_char);
-		  //{pos contains the list of suffixes sorted by their first
-		  //character}
-		 
 		for (int i=0; i<n; ++i)
 		{
 			bh[i] = i == 0 || str[pos[i]] != str[pos[i-1]];
 			b2h[i] = false;
-		}
-		 
+		}		 
 		for (int h = 1; h < n; h <<= 1)
 		{
-			//{bh[i] == false if the first h characters of pos[i-1] ==
-			// the first h characters of pos[i]}
 			int buckets = 0;
 			for (int i=0, j; i < n; i = j)
 			{
@@ -971,9 +966,7 @@ struct SuffixLCPArray //mostly/all from geeksforgeeks, to work for general alpha
 				nxt[i] = j;
 				buckets++;
 			}
-			if (buckets == n) break; // We are done! Lucky bastards!
-			//{suffixes are separted in buckets containing strings
-			// starting with the same h characters}
+			if (buckets == n) break; 
 		 
 			for (int i = 0; i < n; i = nxt[i])
 			{
@@ -1027,9 +1020,9 @@ struct SuffixLCPArray //mostly/all from geeksforgeeks, to work for general alpha
 	{
 		rnk.clear(); pos.clear(); bh.clear(); b2h.clear(); cnt.clear(); nxt.clear(); rank.clear(); lcp.clear();
 	}
-	// - height[i] = length of the longest common prefix of suffix
+	// - lcp[i] = length of the longest common prefix of suffix
 	//   pos[i] and suffix pos[i-1]
-	// - height[0] = 0
+	// - lcp[0] = 0
 	void buildLCP(string &s)
 	{
 		int n = s.length();
@@ -1088,7 +1081,7 @@ struct ConvexHull
 };
 //End Convex Hull Trick
 
-//Graph (Basic Algos)
+// (Basic Algos)
 struct Graph
 {
 	struct edge
@@ -1118,7 +1111,7 @@ struct Graph
 		adj.clear();
 	}
 	
-	vi dist;
+	vector<ll> dist;
 	vi par;
 	
 	void bfs(int s)
@@ -1288,7 +1281,7 @@ struct Graph
 		return ans;
 	}
 };
-//End Graph
+//End 
 
 //Tree
 struct Tree
@@ -1907,12 +1900,12 @@ struct circle
     p(_p),r(_r){};
     circle(double x,double y,double _r):
     p(point(x,y)),r(_r){};
-    circle(point a,point b,point c)//三角形的外接圆 
+    circle(point a,point b,point c)//三角形的外接圆 (circumcircle)
     {
         p=line(a.add(b).div(2),a.add(b).div(2).add(b.sub(a).rotleft())).crosspoint(line(c.add(b).div(2),c.add(b).div(2).add(b.sub(c).rotleft())));
         r=p.distance(a);
     }
-    circle(point a,point b,point c,bool t)//三角形的内切圆 
+    circle(point a,point b,point c,bool t)//三角形的内切圆 (incircle)
     {
         line u,v;
         double m=atan2(b.y-a.y,b.x-a.x),n=atan2(c.y-a.y,c.x-a.x);
@@ -4016,21 +4009,759 @@ int maxMatching()
         res += f;
     }
 }
-    
+
+const long long INFINITY = 1000000000000000000LL;
+class ConvexHullDynamic {
+	typedef long long coef_t;
+	typedef long long coord_t;
+	typedef long long val_t;
+
+private:
+	struct Line {
+		coef_t a, b;
+		double xLeft;
+
+		enum Type {
+			line, maxQuery, minQuery
+		} type;
+		coord_t val;
+
+		explicit Line(coef_t aa = 0, coef_t bb = 0) :
+				a(aa), b(bb), xLeft(-INFINITY), type(Type::line), val(0) {
+		}
+		val_t valueAt(coord_t x) const {
+			return a * x + b;
+		}
+		friend bool areParallel(const Line& l1, const Line& l2) {
+			return l1.a == l2.a;
+		}
+		friend double intersectX(const Line& l1, const Line& l2) {
+			return areParallel(l1, l2) ?
+					INFINITY : 1.0 * (l2.b - l1.b) / (l1.a - l2.a);
+		}
+		bool operator<(const Line& l2) const {
+			if (l2.type == line)
+				return this->a < l2.a;
+			if (l2.type == maxQuery)
+				return this->xLeft < l2.val;
+			if (l2.type == minQuery)
+				return this->xLeft > l2.val;
+
+			return 0;
+		}
+	};
+
+private:
+	bool isMax;
+	std::set<Line> hull;
+
+private:
+	bool hasPrev(std::set<Line>::iterator it) {
+		return it != hull.begin();
+	}
+	bool hasNext(std::set<Line>::iterator it) {
+		return it != hull.end() && std::next(it) != hull.end();
+	}
+	bool irrelevant(const Line& l1, const Line& l2, const Line& l3) {
+		return intersectX(l1, l3) <= intersectX(l1, l2);
+	}
+	bool irrelevant(std::set<Line>::iterator it) {
+		return hasPrev(it) && hasNext(it) && ((isMax && irrelevant(*std::prev(it), *it, *std::next(it)))
+						|| (!isMax && irrelevant(*std::next(it), *it,
+										*std::prev(it))));
+	}
+
+	std::set<Line>::iterator updateLeftBorder(std::set<Line>::iterator it) {
+		if ((isMax && !hasPrev(it)) || (!isMax && !hasNext(it)))
+			return it;
+
+		double val = intersectX(*it, isMax ? *std::prev(it) : *std::next(it));
+		Line buf(*it);
+		it = hull.erase(it);
+		buf.xLeft = val;
+		it = hull.insert(it, buf);
+		return it;
+	}
+
+public:
+	ConvexHullDynamic() {
+		isMax = true;
+	}
+
+	void addLine(coef_t a, coef_t b) {
+		Line l3 = Line(a, b);
+		auto it = hull.lower_bound(l3);
+
+		if (it != hull.end() && areParallel(*it, l3)) {
+			if ((isMax && it->b < b) || (!isMax && it->b > b))
+				it = hull.erase(it);
+			else
+				return;
+		}
+
+		it = hull.insert(it, l3);
+		if (irrelevant(it)) {
+			hull.erase(it);
+			return;
+		}
+
+		while (hasPrev(it) && irrelevant(std::prev(it)))
+			hull.erase(std::prev(it));
+		while (hasNext(it) && irrelevant(std::next(it)))
+			hull.erase(std::next(it));
+
+		it = updateLeftBorder(it);
+		if (hasPrev(it))
+			updateLeftBorder(std::prev(it));
+		if (hasNext(it))
+			updateLeftBorder(std::next(it));
+	}
+	
+	val_t getBest(coord_t x) const {
+		if (hull.size() == 0) {
+			return -INFINITY;
+		}
+		Line q;
+		q.val = x;
+		q.type = isMax ? Line::Type::maxQuery : Line::Type::minQuery;
+
+		auto bestLine = hull.lower_bound(q);
+		if (isMax)
+			--bestLine;
+		return bestLine->valueAt(x);
+	}
+};
 //end Matching
+
+template<unsigned mod>
+class modulo {
+private:
+	unsigned x;
+public:
+	modulo() : x(0) {};
+	modulo(unsigned x_) : x(x_) {};
+	operator unsigned() { return x; }
+	modulo operator==(const modulo& m) const { return x == m.x; }
+	modulo operator!=(const modulo& m) const { return x != m.x; }
+	modulo& operator+=(const modulo& m) { x = (x + m.x >= mod ? x + m.x - mod : x + m.x); return *this; }
+	modulo& operator-=(const modulo& m) { x = (x < m.x ? x - m.x + mod : x - m.x); return *this; }
+	modulo& operator*=(const modulo& m) { x = 1ULL * x * m.x % mod; return *this; }
+	modulo operator+(const modulo& m) const { return modulo(*this) += m; }
+	modulo operator-(const modulo& m) const { return modulo(*this) -= m; }
+	modulo operator*(const modulo& m) const { return modulo(*this) *= m; }
+};
+ 
+// ------------ Matrix Functions ------------ //
+typedef std::vector<modulo<998244353> > matrix_base;
+typedef std::vector<matrix_base> matrix;
+matrix mul(const matrix& a, const matrix& b) {
+	assert(a[0].size() == b.size());
+	matrix ret(a.size(), matrix_base(b[0].size(), 0));
+	for (int i = 0; i < a.size(); i++) {
+		for (int j = 0; j < b[0].size(); j++) {
+			for (int k = 0; k < b.size(); k++) ret[i][j] += a[i][k] * b[k][j];
+		}
+	}
+	return ret;
+}
+matrix unit(int n) {
+	matrix ret(n, matrix_base(n, 0));
+	for (int i = 0; i < n; i++) ret[i][i] = 1;
+	return ret;
+}
+matrix power(const matrix& a, long long b) {
+	assert(a.size() == a[0].size());
+	matrix f = a, ret = unit(a.size());
+	while (b) {
+		if (b & 1) ret = mul(ret, f);
+		f = mul(f, f);
+		b >>= 1;
+	}
+	return ret;
+}
+ 
+// ------------ Modpower Algorithm ------------ //
+inline int modpow(int a, int b, int m) {
+	int ret = 1;
+	while (b) {
+		if (b & 1) ret = 1LL * ret * a % m;
+		a = 1LL * a * a % m;
+		b >>= 1;
+	}
+	return ret;
+}
+ 
+// ------------ Number Theoretic Transform ------------ //
+inline static std::vector<int> FastModuloTransform(std::vector<int> v, int base, int root) {
+	int n = v.size();
+	for (int i = 0, j = 1; j < n - 1; j++) {
+		for (int k = n >> 1; k >(i ^= k); k >>= 1);
+		if (i < j) std::swap(v[i], v[j]);
+	}
+	for (int b = 1; b <= n / 2; b *= 2) {
+		int x = modpow(root, (base - 1) / (b << 1), base);
+		for (int i = 0; i < n; i += (b << 1)) {
+			int p = 1;
+			for (int j = i; j < i + b; j++) {
+				int t1 = v[j], t2 = 1LL * v[j + b] * p % base;
+				v[j] = t1 + t2; v[j] = (v[j] < base ? v[j] : v[j] - base);
+				v[j + b] = t1 - t2 + base; v[j + b] = (v[j + b] < base ? v[j + b] : v[j + b] - base);
+				p = 1LL * p * x % base;
+			}
+		}
+	}
+	return v;
+}
+inline static std::vector<int> FastConvolutionMod(std::vector<int> v1, std::vector<int> v2, int mod, int tr) {
+	int n = v1.size() * 2; // v1 and v2 must be the same size!!
+	v1.resize(n);
+	v2.resize(n);
+	v1 = FastModuloTransform(v1, mod, tr);
+	v2 = FastModuloTransform(v2, mod, tr);
+	for (int i = 0; i < n; i++) v1[i] = 1LL * v1[i] * v2[i] % mod;
+	v1 = FastModuloTransform(v1, mod, modpow(tr, mod - 2, mod));
+	int t = modpow(n, mod - 2, mod);
+	for (int i = 0; i < n; i++) v1[i] = 1LL * v1[i] * t % mod;
+	return v1;
+}
+ 
+// ------------ Lagrange Interpolation ------------ //
+std::vector<int> lagrange_interpolation(std::vector<int> &v, int m) {
+	int n = v.size() - 1;
+	std::vector<int> inv(n + 2); inv[1] = 1;
+	for (int i = 2; i <= n; i++) inv[i] = 1LL * inv[m % i] * (m - m / i) % m;
+	std::vector<int> ret(n + 1);
+	int q = 1;
+	for (int i = 1; i <= n; i++) q = 1LL * q * inv[i] % m;
+	if (n % 2 == 1) q = (m - q) % m;
+	for (int i = 0; i <= n; i++) {
+		ret[i] = 1LL * v[i] * q % m;
+		q = 1LL * q * (m - n + i) % m * inv[i + 1] % m;
+	}
+	return ret;
+}
+int lagrange_function(int x, std::vector<int> &v, int m) {
+	int n = v.size() - 1;
+	int mul = 1;
+	for (int i = 0; i <= n; i++) mul = 1LL * mul * (x - i + m) % m;
+	int ret = 0;
+	for (int i = 0; i <= n; i++) ret = (ret + 1LL * v[i] * modpow(x - i + m, m - 2, m)) % m;
+	return 1LL * ret * mul % m;
+}
+
+class LazySegmentTree {
+private:
+	int size_;
+	vector<long long> v, lazy;
+	void update(int a, int b, long long x, int k, int l, int r) {
+		push(k, l, r);
+		if (r <= a || b <= l) return;
+		if (a <= l && r <= b) {
+			lazy[k] = x;
+			push(k, l, r);
+		}
+		else {
+			update(a, b, x, k * 2, l, (l + r) >> 1);
+			update(a, b, x, k * 2 + 1, (l + r) >> 1, r);
+			v[k] = merge(v[k * 2], v[k * 2 + 1]);
+		}
+	}
+	long long query(int a, int b, int k, int l, int r) {
+		push(k, l, r);
+		if (r <= a || b <= l) return 0;
+		if (a <= l && r <= b) return v[k];
+		long long lc = query(a, b, k * 2, l, (l + r) >> 1);
+		long long rc = query(a, b, k * 2 + 1, (l + r) >> 1, r);
+		return merge(lc, rc);
+	}
+ 
+public:
+	LazySegmentTree() : v(vector<long long>()), lazy(vector<long long>()) {};
+	LazySegmentTree(int n) {
+		for (size_ = 1; size_ < n;) size_ <<= 1;
+		v.resize(size_ * 2);
+		lazy.resize(size_ * 2);
+	}
+	inline void push(int k, int l, int r) {
+		if (lazy[k] != 0) {
+			v[k] += lazy[k] * (r - l);
+			if (r - l > 1) {
+				lazy[k * 2] += lazy[k];
+				lazy[k * 2 + 1] += lazy[k];
+			}
+			lazy[k] = 0;
+		}
+	}
+	inline long long merge(long long x, long long y) {
+		return x + y;
+	}
+	inline void update(int l, int r, long long x) {
+		update(l, r, x, 1, 0, size_);
+	}
+	inline long long query(int l, int r) {
+		return query(l, r, 1, 0, size_);
+	}
+};
 //See more http://codeforces.com/blog/entry/22072
 
-/* TO-DO LIST :
-1. SQRT DECOMP (MO)
-2. SQRT DECOMP (REAL)
-3. TREE (HLD, centroid?)
-12. OTHER STRING STRUCTS SUCH AS PALINDROMIC TREE, MANACHAR, Z?
-15. Karatsuba
-16. Other Flow Algo
-17. KMP
-18. Trie
-19. Suffix Tree (?)
-*/
+
+#include <cstdio>
+#include <cassert>
+#include <vector>
+
+using namespace std;
+
+typedef long long ll;
+typedef pair<int, int> Pii;
+
+#define FOR(i,n) for(int i = 0; i < (n); i++)
+#define sz(c) ((int)(c).size())
+#define ten(x) ((int)1e##x)
+
+template<class T> T extgcd(T a, T b, T& x, T& y) { for (T u = y = 1, v = x = 0; a;) { T q = b / a; swap(x -= q * u, u); swap(y -= q * v, v); swap(b -= q * a, a); } return b; }
+template<class T> T mod_inv(T a, T m) { T x, y; extgcd(a, m, x, y); return (m + x % m) % m; }
+ll mod_pow(ll a, ll n, ll mod) { ll ret = 1; ll p = a % mod; while (n) { if (n & 1) ret = ret * p % mod; p = p * p % mod; n >>= 1; } return ret; }
+
+template<int mod, int primitive_root>
+class NTT {
+public:
+	int get_mod() const { return mod; }
+	void _ntt(vector<ll>& a, int sign) {
+		const int n = sz(a);
+		assert((n ^ (n&-n)) == 0); //n = 2^k
+
+		const int g = 3; //g is primitive root of mod
+		int h = (int)mod_pow(g, (mod - 1) / n, mod); // h^n = 1
+		if (sign == -1) h = (int)mod_inv(h, mod); //h = h^-1 % mod
+
+		//bit reverse
+		int i = 0;
+		for (int j = 1; j < n - 1; ++j) {
+			for (int k = n >> 1; k >(i ^= k); k >>= 1);
+			if (j < i) swap(a[i], a[j]);
+		}
+
+		for (int m = 1; m < n; m *= 2) {
+			const int m2 = 2 * m;
+			const ll base = mod_pow(h, n / m2, mod);
+			ll w = 1;
+			FOR(x, m) {
+				for (int s = x; s < n; s += m2) {
+					ll u = a[s];
+					ll d = a[s + m] * w % mod;
+					a[s] = u + d;
+					if (a[s] >= mod) a[s] -= mod;
+					a[s + m] = u - d;
+					if (a[s + m] < 0) a[s + m] += mod;
+				}
+				w = w * base % mod;
+			}
+		}
+
+		for (auto& x : a) if (x < 0) x += mod;
+	}
+	void ntt(vector<ll>& input) {
+		_ntt(input, 1);
+	}
+	void intt(vector<ll>& input) {
+		_ntt(input, -1);
+		const int n_inv = mod_inv(sz(input), mod);
+		for (auto& x : input) x = x * n_inv % mod;
+	}
+
+	// 畳み込み演算を行う
+	vector<ll> convolution(const vector<ll>& a, const vector<ll>& b){
+		int ntt_size = 1;
+		while (ntt_size < sz(a) + sz(b)) ntt_size *= 2;
+
+		vector<ll> _a = a, _b = b;
+		_a.resize(ntt_size); _b.resize(ntt_size);
+
+		ntt(_a);
+		ntt(_b);
+
+		FOR(i, ntt_size){
+			(_a[i] *= _b[i]) %= mod;
+		}
+
+		intt(_a);
+		return _a;
+	}
+};
+
+ll garner(vector<Pii> mr, int mod){
+	mr.emplace_back(mod, 0);
+
+	vector<ll> coffs(sz(mr), 1);
+	vector<ll> constants(sz(mr), 0);
+	FOR(i, sz(mr) - 1){
+		// coffs[i] * v + constants[i] == mr[i].second (mod mr[i].first) を解く
+		ll v = (mr[i].second - constants[i]) * mod_inv<ll>(coffs[i], mr[i].first) % mr[i].first;
+		if (v < 0) v += mr[i].first;
+
+		for (int j = i + 1; j < sz(mr); j++) {
+			(constants[j] += coffs[j] * v) %= mr[j].first;
+			(coffs[j] *= mr[i].first) %= mr[j].first;
+		}
+	}
+
+	return constants[sz(mr) - 1];
+}
+
+typedef NTT<167772161, 3> NTT_1;
+typedef NTT<469762049, 3> NTT_2;
+typedef NTT<1224736769, 3> NTT_3;
+
+//任意のmodで畳み込み演算 O(n log n)
+vector<ll> int32mod_convolution(vector<ll> a, vector<ll> b,int mod){
+	for (auto& x : a) x %= mod;
+	for (auto& x : b) x %= mod;
+	NTT_1 ntt1; NTT_2 ntt2; NTT_3 ntt3;
+	auto x = ntt1.convolution(a, b);
+	auto y = ntt2.convolution(a, b);
+	auto z = ntt3.convolution(a, b);
+
+	vector<ll> ret(sz(x));
+	vector<Pii> mr(3);
+	FOR(i, sz(x)){
+		mr[0].first = ntt1.get_mod(), mr[0].second = (int)x[i];
+		mr[1].first = ntt2.get_mod(), mr[1].second = (int)y[i];
+		mr[2].first = ntt3.get_mod(), mr[2].second = (int)z[i];
+		ret[i] = garner(mr, mod);
+	}
+
+	return ret;
+}
+
+// garnerのアルゴリズムを直書きしたversion，速い
+vector<ll> fast_int32mod_convolution(vector<ll> a, vector<ll> b,int mod){
+	for (auto& x : a) x %= mod;
+	for (auto& x : b) x %= mod;
+	
+	NTT_1 ntt1; NTT_2 ntt2; NTT_3 ntt3;
+	assert(ntt1.get_mod() < ntt2.get_mod() && ntt2.get_mod() < ntt3.get_mod());
+	auto x = ntt1.convolution(a, b);
+	auto y = ntt2.convolution(a, b);
+	auto z = ntt3.convolution(a, b);
+
+	// garnerのアルゴリズムを極力高速化した
+	const ll m1 = ntt1.get_mod(), m2 = ntt2.get_mod(), m3 = ntt3.get_mod();
+	const ll m1_inv_m2 = mod_inv<ll>(m1, m2);
+	const ll m12_inv_m3 = mod_inv<ll>(m1 * m2, m3);
+	const ll m12_mod = m1 * m2 % mod;
+	vector<ll> ret(sz(x));
+	FOR(i, sz(x)){
+		ll v1 = (y[i] - x[i]) *  m1_inv_m2 % m2;
+		if (v1 < 0) v1 += m2;
+		ll v2 = (z[i] - (x[i] + m1 * v1) % m3) * m12_inv_m3 % m3;
+		if (v2 < 0) v2 += m3;
+		ll constants3 = (x[i] + m1 * v1 + m12_mod * v2) % mod;
+		if (constants3 < 0) constants3 += mod;
+		ret[i] = constants3;
+	}
+
+	return ret;
+}
+
+//2^23より大きく，primitive rootに3を持つもの
+// const int mods[] = { 1224736769, 469762049, 167772161, 595591169, 645922817, 897581057, 998244353 };
+
+void ntt_test() {
+	NTT_1 ntt;
+
+	vector<ll> v;
+	FOR(i, 16) v.push_back(10 + i);
+
+	auto v2 = v;
+	ntt.ntt(v2);
+
+	auto v3 = v2;
+	ntt.intt(v3);
+
+	assert(v == v3);
+}
+
+void comvolution_test() {
+	NTT_1 ntt1;
+
+	vector<ll> v = { 1, 2, 3 };
+	vector<ll> u = { 4, 5, 6 };
+
+	auto vu = ntt1.convolution(v, u);
+	vector<ll> vu2 = { 1 * 4, 1 * 5 + 2 * 4, 1 * 6 + 2 * 5 + 3 * 4, 2 * 6 + 3 * 5, 3 * 6, 0, 0, 0 };
+	assert(vu == vu2);
+}
+
+void int32mod_convolution_test(){
+	vector<ll> x , y;
+	FOR(i, 10) x.push_back(ten(8) + i);
+	y = x;
+
+	auto z = int32mod_convolution(x, y, ten(9) + 7);
+	z.resize(sz(x) + sz(y) - 1);
+	vector<ll> z2 = { 
+		930000007, 60000000, 390000001, 920000004,
+		650000003, 580000006, 710000014, 40000021,
+		570000042, 300000064, 370000109, 240000144,
+		910000175, 380000187, 650000193, 720000185,
+		590000162, 260000123, 730000074 };
+	assert(z == z2);
+}
+
+void test(){
+	ntt_test();
+	comvolution_test();
+	int32mod_convolution_test();
+}
+
+//Edmond's Algorithm (MST on directed graph)
+template<typename T> //http://sunmoon-template.blogspot.my/2017/02/minimum-arborescence-zhuliu.html
+struct edmond{
+	static const int MAXN=110,MAXM=10005;
+	struct node{
+		int u,v;
+		T w,tag;
+		node *l,*r;
+		node(int u=0,int v=0,T w=0):u(u),v(v),w(w),tag(0),l(0),r(0){}
+		void down(){
+			w+=tag;
+			if(l)l->tag+=tag;
+			if(r)r->tag+=tag;
+			tag=0;
+		}
+	}mem[MAXM];//靜態記憶體 
+	node *pq[MAXN*2],*E[MAXN*2];
+	int st[MAXN*2],id[MAXN*2],m;
+	void init(int n){
+		for(int i=1;i<=n;++i){
+			pq[i]=E[i]=0;
+			st[i]=id[i]=i;
+		}m=0;
+	}
+	node *merge(node *a,node *b){//skew heap
+		if(!a||!b)return a?a:b;
+		a->down(),b->down();
+		if(b->w<a->w)return merge(b,a);
+		swap(a->l,a->r);
+		a->l=merge(b,a->l);
+		return a;
+	}
+	void add_edge(int u,int v,T w){
+		if(u!=v)pq[v]=merge(pq[v],&(mem[m++]=node(u,v,w)));
+	}
+	int find(int x,int *st){
+		return st[x]==x?x:st[x]=find(st[x],st);
+	}
+	T build(int root,int n){
+		T ans=0;int N=n,all=n;
+		for(int i=1;i<=N;++i){
+			if(i==root||!pq[i])continue;
+			while(pq[i]){
+				pq[i]->down(),E[i]=pq[i];
+				pq[i]=merge(pq[i]->l,pq[i]->r);
+				if(find(E[i]->u,id)!=find(i,id))break;
+			}
+			if(find(E[i]->u,id)==find(i,id))continue;
+			ans+=E[i]->w;
+			if(find(E[i]->u,st)==find(i,st)){
+				if(pq[i])pq[i]->tag-=E[i]->w;
+				pq[++N]=pq[i],id[N]=N;
+				for(int u=find(E[i]->u,id);u!=i;u=find(E[u]->u,id)){
+					if(pq[u])pq[u]->tag-=E[u]->w;
+					id[find(u,id)]=N;
+					pq[N]=merge(pq[N],pq[u]);
+				}
+				st[N]=find(i,st);
+				id[find(i,id)]=N;
+			}else st[find(i,st)]=find(E[i]->u,st),--all;
+		}
+		return all==1?ans:-INT_MAX;//圖不連通就無解 
+	}
+};
+//End Edmond
+
+//Start Determinant (mod P)
+ll calc(void)
+{
+    int i,j,k;
+
+    bool neg = false;
+    
+    for(j = 0; j < n; j++)
+    {
+        for(i = j; i < n; i++) if(a[i][j] != 0) break;
+        if(i == n) return 0;
+        if(i != j)
+        {
+            neg = !neg;
+            for(int k = 0; k < n; k++) swap(a[i][k],a[j][k]);
+        }
+        for(i = j + 1; i < n; i++)
+        {
+            ll coef = ((P - a[i][j])*modpow(a[j][j],P-2)) % P;
+            for(k = j; k < n; k++) 
+            {
+				a[i][k] = (a[i][k] + a[j][k] * coef) % P;
+			}
+        }
+    }
+    ll ans = (neg ? (P - 1) : 1);
+	for(i = 0; i < n; i++) ans = ans * a[i][i] % P;
+	if(ans<0) ans+=P;
+    return ans;
+}
+
+//Wavelet Tree
+struct wavelet_tree
+{
+	int lo, hi;
+	wavelet_tree *l, *r;
+	vi b;	 
+	//nos are in range [x,y]
+	//array indices are [from, to), from >= 1
+	wavelet_tree(int *from, int *to, int x, int y)
+	{
+		lo = x, hi = y;
+		if(lo == hi or from >= to) return;
+		int mid = (lo+hi)/2;
+		auto f = [mid](int x)
+		{
+			return x <= mid;
+		};
+		b.reserve(to-from+1);
+		b.pb(0);
+		for(auto it = from; it != to; it++)
+		b.pb(b.back() + f(*it));
+		//see how lambda function is used here
+		auto pivot = stable_partition(from, to, f);
+		l = new wavelet_tree(from, pivot, lo, mid);
+		r = new wavelet_tree(pivot, to, mid+1, hi);
+	}
+	//kth smallest element in [l, r]
+	int kth(int l, int r, int k)
+	{
+		if(l > r) return 0;
+		if(lo == hi) return lo;
+		int inLeft = b[r] - b[l-1];
+		int lb = b[l-1]; //amt of nos in first (l-1) nos that go in left
+		int rb = b[r]; //amt of nos in first (r) nos that go in left
+		if(k <= inLeft) return this->l->kth(lb+1, rb , k);
+		return this->r->kth(l-lb, r-rb, k-inLeft);
+	}
+	 
+	//count of nos in [l, r] Less than or equal to k
+	int LTE(int l, int r, int k)
+	{
+		if(l > r or k < lo) return 0;
+		if(hi <= k) return r - l + 1;
+		int lb = b[l-1], rb = b[r];
+		return this->l->LTE(lb+1, rb, k) + this->r->LTE(l-lb, r-rb, k);
+	}
+	 
+	//count of nos in [l, r] equal to k
+	int count(int l, int r, int k) 
+	{
+		if(l > r or k < lo or k > hi) return 0;
+		if(lo == hi) return r - l + 1;
+		int lb = b[l-1], rb = b[r], mid = (lo+hi)/2;
+		if(k <= mid) return this->l->count(lb+1, rb, k);
+		return this->r->count(l-lb, r-rb, k);
+	}
+	~wavelet_tree()
+	{
+		delete l;
+		delete r;
+	}
+};
+
+//Combi Class
+struct Combi
+{
+	vector<ll> fact;
+	vector<ll> ifact;
+	vector<ll> inv;
+	vector<ll> pow2;
+	const int MOD = 1e9 + 7;
+	ll add(ll a, ll b)
+	{
+		a+=b;
+		while(a>=MOD) a-=MOD;
+		return a;
+	}
+	ll mult(ll a, ll b)
+	{
+		return (a*b)%MOD;
+	}
+	ll modpow(ll a, ll b)
+	{
+		ll r=1;
+		while(b)
+		{
+			if(b&1) r=mult(r,a);
+			a=mult(a,a);
+			b>>=1;
+		}
+		return r;
+	}
+	ll choose(ll a, ll b)
+	{
+		if(a<b) return 0;
+		if(b==0) return 1;
+		return mult(fact[a],mult(ifact[b],ifact[a-b]));
+	}
+	ll inverse(ll a)
+	{
+		return modpow(a,MOD-2);
+	}
+	void init(int _n)
+	{
+		fact.clear(); ifact.clear(); inv.clear(); pow2.clear();
+		fact.resize(_n+1);
+		ifact.resize(_n+1);
+		inv.resize(_n+1);
+		pow2.resize(_n+1);
+		pow2[0]=1;
+		ifact[0]=1;
+		fact[0]=1;
+		for(int i=1;i<=_n;i++)
+		{
+			pow2[i]=add(pow2[i-1],pow2[i-1]);
+			inv[i] = inverse(i);
+			fact[i]=mult(fact[i-1],i);
+			ifact[i]=mult(ifact[i-1],inv[i]);
+		}
+	}
+};
+
+/*
+wavelet_tree T(a+1, a+n+1, 1, MAX);
+cin >> q;
+while(q--)
+{
+	int x;
+	cin >> x;
+	cin >> l >> r >> k;
+	if(x == 0)
+	{
+		//kth smallest
+		cout << "Kth smallest: ";
+		cout << T.kth(l, r, k) << endl;
+	}
+	if(x == 1)
+	{
+		//less than or equal to K
+		cout << "LTE: ";
+		cout << T.LTE(l, r, k) << endl;
+	}
+	if(x == 2)
+	{
+		//count occurence of K in [l, r]
+		cout << "Occurence of K: ";
+		cout << T.count(l, r, k) << endl;
+	}
+}
+//End Wavelet
+
 int main() //Testing Zone
 {
 	ios_base::sync_with_stdio(0); cin.tie(0);
