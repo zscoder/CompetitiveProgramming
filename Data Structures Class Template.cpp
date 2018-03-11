@@ -1172,6 +1172,7 @@ struct Graph
 	void dijkstra(int s)
 	{
 		ll INFI = ll(1e18);
+		dist.clear();
 		dist.assign(n, INFI);
 		par.assign(n, -1);
 		dist[s] = 0; par[s] = -1;
@@ -2348,13 +2349,6 @@ struct polygon
         if (dblcmp(area))ret=ret.div(area);
         return ret;
     }
-    double areaintersection(polygon po)
-    {
-    }
-    double areaunion(polygon po)
-    {
-        return getarea()+po.getarea()-areaintersection(po);
-    }
     double areacircle(circle c)
     {
         int i,j,k,l,m;
@@ -2824,9 +2818,6 @@ struct point3
         r/=len();
         return point3(x*r,y*r,z*r);
     }
-    point3 rotate(point3 o,double r)
-    {
-    }
 };
 struct line3 
 {
@@ -3037,7 +3028,7 @@ struct MinCostFlow{
                 for(int u = 0; u < n; u++){
                     for(int k = 0; k < graph[u].size(); k++){
                         int eIdx = graph[u][i];
-                        int v = e[eIdx].v, cap = e[eIdx].cap, w = e[eIdx].cost;
+                        int v = e[eIdx].v; ll cap = e[eIdx].cap, w = e[eIdx].cost;
  
                         if(dist[v] > dist[u] + w && cap > 0){
                             dist[v] = dist[u] + w;
@@ -3074,8 +3065,8 @@ struct MinCostFlow{
  
             for(int i = 0; i < graph[u].size(); i++){
                 int eIdx = graph[u][i];
-                int v = e[eIdx].v, cap = e[eIdx].cap;
-                int w = e[eIdx].cost + potential[u] - potential[v];
+                int v = e[eIdx].v; ll cap = e[eIdx].cap;
+                ll w = e[eIdx].cost + potential[u] - potential[v];
  
                 if(dist[u] + w < dist[v] && cap > 0){
                     dist[v] = dist[u] + w;
@@ -3097,7 +3088,7 @@ struct MinCostFlow{
         if(parent[v] == -1)
             return curFlow;
         int eIdx = parent[v];
-        int u = e[eIdx].u, w = e[eIdx].cost;
+        int u = e[eIdx].u; ll w = e[eIdx].cost;
  
         long long f = sendFlow(u, min(curFlow, e[eIdx].cap));
  
@@ -3114,12 +3105,12 @@ struct MinCostFlow{
 struct Edge{
     int u, v;
     long long cap, cost;
-
+ 
     Edge(int _u, int _v, long long _cap, long long _cost){
         u = _u; v = _v; cap = _cap; cost = _cost;
     }
 };
-
+ 
 struct MinCostFlow{
     int n, s, t;
     long long flow, cost;
@@ -3127,35 +3118,35 @@ struct MinCostFlow{
     vector<Edge> e;
     vector<long long> dist;
     vector<int> parent;
-
+ 
     MinCostFlow(int _n){
         // 0-based indexing
         n = _n;
         graph.assign(n, vector<int> ());
     }
-
+ 
     void addEdge(int u, int v, long long cap, long long cost, bool directed = true){
         graph[u].push_back(e.size());
         e.push_back(Edge(u, v, cap, cost));
-
+ 
         graph[v].push_back(e.size());
         e.push_back(Edge(v, u, 0, -cost));
-
+ 
         if(!directed)
             addEdge(v, u, cap, cost, true);
     }
-
+ 
     pair<long long, long long> getMinCostFlow(int _s, int _t){
         s = _s; t = _t;
         flow = 0, cost = 0;
-
+ 
         while(SPFA()){
             flow += sendFlow(t, 1LL<<62);
         }
-
+ 
         return make_pair(flow, cost);
     }
-
+ 
     // not sure about negative cycle
     bool SPFA(){
         parent.assign(n, -1);
@@ -3164,24 +3155,24 @@ struct MinCostFlow{
         vector<bool> inqueue(n, 0);     inqueue[s] = true;
         queue<int> q;                   q.push(s);
         bool negativecycle = false;
-
-
+ 
+ 
         while(!q.empty() && !negativecycle){
             int u = q.front(); q.pop(); inqueue[u] = false;
-
+ 
             for(int i = 0; i < graph[u].size(); i++){
                 int eIdx = graph[u][i];
-                int v = e[eIdx].v, w = e[eIdx].cost, cap = e[eIdx].cap;
-
+                int v = e[eIdx].v; ll w = e[eIdx].cost, cap = e[eIdx].cap;
+ 
                 if(dist[u] + w < dist[v] && cap > 0){
                     dist[v] = dist[u] + w;
                     parent[v] = eIdx;
-
+ 
                     if(!inqueue[v]){
                         q.push(v);
                         queuetime[v]++;
                         inqueue[v] = true;
-
+ 
                         if(queuetime[v] == n+2){
                             negativecycle = true;
                             break;
@@ -3190,22 +3181,22 @@ struct MinCostFlow{
                 }
             }
         }
-
+ 
         return dist[t] != (1LL<<62);
     }
-
+ 
     long long sendFlow(int v, long long curFlow){
         if(parent[v] == -1)
             return curFlow;
         int eIdx = parent[v];
-        int u = e[eIdx].u, w = e[eIdx].cost;
-
+        int u = e[eIdx].u; ll w = e[eIdx].cost;
+ 
         long long f = sendFlow(u, min(curFlow, e[eIdx].cap));
-
+ 
         cost += f*w;
         e[eIdx].cap -= f;
         e[eIdx^1].cap += f;
-
+ 
         return f;
     }
 };
@@ -3766,169 +3757,177 @@ struct SCC
 //end SCC
 
 //begin Link-Cut Tree
-struct Node
-{   int sz, label; /* size, label */
-    Node *p, *pp, *l, *r; /* parent, path-parent, left, right pointers */
-    Node() { p = pp = l = r = 0; }
+template<class T> struct splnode {
+  typedef splnode<T> node_t;
+
+  splnode() : P(NULL), flip(0), pp(NULL) {
+    C[0] = C[1] = NULL;
+    fix();
+  }
+
+  node_t* P;
+  node_t* C[2];
+
+  int flip;
+  node_t* pp;
+
+  /* Fix the parent pointers of our children.  Additionally if we have any
+   * extra data we're tracking (e.g. sum of subtree elements) now is the time to
+   * update them (all of the children will already be up to date). */
+  void fix() {
+    if(C[0]) C[0]->P = this;
+    if(C[1]) C[1]->P = this;
+  }
+
+  /* Push the flip bit down the tree. */
+  void push_flip() {
+    if(!flip) return;
+    flip = 0;
+    swap(C[0], C[1]);
+    if(C[0]) C[0]->flip ^= 1;
+    if(C[1]) C[1]->flip ^= 1;
+  }
+
+  /* Return the direction of this relative its parent. */
+  int up() {
+    return !P ? -1 : (P->C[0] == this ? 0 : 1);
+  }
+
+  /* Simple zig step in the 'c' direction when we've reached the root. */
+  void zig(int c) {
+    node_t* X = C[c];
+    if(X->P = P) P->C[up()] = X;
+    C[c] = X->C[1 - c];
+    X->C[1 - c] = this;
+    fix(); X->fix();
+    if(P) P->fix();
+    swap(pp, X->pp);
+  }
+
+  /* Zig zig in the 'c' direction both times. */
+  void zigzig(int c) {
+    node_t* X = C[c];
+    node_t* Y = X->C[c];
+    if(Y->P = P) P->C[up()] = Y;
+    C[c] = X->C[1 - c];
+    X->C[c] = Y->C[1 - c];
+    Y->C[1 - c] = X;
+    X->C[1 - c] = this;
+    fix(); X->fix(); Y->fix();
+    if(P) P->fix();
+    swap(pp, Y->pp);
+  }
+
+  /* Zig zag first in the 'c' direction then in the '1-c' direciton. */
+  void zigzag(int c) {
+    node_t* X = C[c];
+    node_t* Y = X->C[1 - c];
+    if(Y->P = P) P->C[up()] = Y;
+    C[c] = Y->C[1 - c];
+    X->C[1 - c] = Y->C[c];
+    Y->C[1 - c] = this;
+    Y->C[c] = X;
+    fix(); X->fix(); Y->fix();
+    if(P) P->fix();
+    swap(pp, Y->pp);
+  }
+
+  /* Splay this up to the root.  Always finishes without flip set. */
+  node_t* splay() {
+    for(push_flip(); P; ) {
+      /* Reorganize flip bits so we can rotate as normal. */
+      if(P->P) P->P->push_flip();
+      P->push_flip();
+      push_flip();
+
+      int c1 = up();
+      int c2 = P->up();
+      if(c2 == -1) {
+        P->zig(c1);
+      } else if(c1 == c2) {
+        P->P->zigzig(c1);
+      } else {
+        P->P->zigzag(c2);
+      }
+    }
+    return this;
+  }
+
+  /* Return the max element of the subtree rooted at this. */
+  node_t* last() {
+    push_flip();
+    return C[1] ? C[1]->last()  : splay();
+  }
+
+  /* Return the min element of the subtree rooted at this. */
+  node_t* first() {
+    push_flip();
+    return C[0] ? C[0]->first() : splay();
+  }
 };
 
-void update(Node *x)
-{   x->sz = 1;
-    if(x->l) x->sz += x->l->sz;
-    if(x->r) x->sz += x->r->sz;
+
+template<class T>
+struct linkcut {
+typedef splnode<T> node_t;
+
+linkcut(int N) : node(N) {
 }
 
-void rotr(Node *x)
-{   Node *y, *z;
-    y = x->p, z = y->p;
-    if((y->l = x->r)) y->l->p = y;
-    x->r = y, y->p = x;
-    if((x->p = z))
-    {   if(y == z->l) z->l = x;
-        else z->r = x;
-    }
-    x->pp = y->pp;
-    y->pp = 0;
-    update(y);
+void link(int u, int v) {
+  make_root(v);
+  node[v].pp = &node[u];
 }
 
-void rotl(Node *x)
-{   Node *y, *z;
-    y = x->p, z = y->p;
-    if((y->r = x->l)) y->r->p = y;
-    x->l = y, y->p = x;
-    if((x->p = z))
-    {   if(y == z->l) z->l = x;
-        else z->r = x;
-    }
-    x->pp = y->pp;
-    y->pp = 0;
-    update(y);
+void cut(int u, int v) {
+  make_root(u);
+  node[v].splay();
+  if(node[v].pp) {
+    node[v].pp = NULL;
+  } else {
+    node[v].C[0]->P = NULL;
+    node[v].C[0] = NULL;
+    node[v].fix();
+  }
 }
 
-void splay(Node *x)
-{   Node *y, *z;
-    while(x->p)
-    {   y = x->p;
-        if(y->p == 0)
-        {   if(x == y->l) rotr(x);
-            else rotl(x);
-        }
-        else
-        {   z = y->p;
-            if(y == z->l)
-            {   if(x == y->l) rotr(y), rotr(x);
-                else rotl(x), rotr(x);
-            }
-            else
-            {   if(x == y->r) rotl(y), rotl(x);
-                else rotr(x), rotl(x);
-            }
-        }
-    }
-    update(x);
+bool connected(int u, int v) {
+  node_t* nu = access(u)->first();
+  node_t* nv = access(v)->first();
+  return nu == nv;
 }
 
-Node *access(Node *x)
-{   splay(x);
-    if(x->r)
-    {   x->r->pp = x;
-        x->r->p = 0;
-        x->r = 0;
-        update(x);
-    }
+/* Move u to root of represented tree. */
+void make_root(int u) {
+  access(u);
+  node[u].splay();
+  if(node[u].C[0]) {
+    node[u].C[0]->P = NULL;
+    node[u].C[0]->flip ^= 1;
+    node[u].C[0]->pp = &node[u];
 
-    Node *last = x;
-    while(x->pp)
-    {   Node *y = x->pp;
-        last = y;
-        splay(y);
-        if(y->r)
-        {   y->r->pp = y;
-            y->r->p = 0;
-        }
-        y->r = x;
-        x->p = y;
-        x->pp = 0;
-        update(y);
-        splay(x);
-    }
-    return last;
+    node[u].C[0] = NULL;
+    node[u].fix();
+  }
 }
 
-Node *root(Node *x)
-{   access(x);
-    while(x->l) x = x->l;
-    splay(x);
-    return x;
+/* Move u to root aux tree.  Return the root of the root aux tree. */
+splnode<T>* access(int u) {
+  node_t* x,* pp;
+  for(x = node[u].splay(); x->pp; x = pp) {
+    pp = x->pp->splay();
+    x->pp = NULL;
+    if(pp->C[1]) {
+      pp->C[1]->P = NULL;
+      pp->C[1]->pp = pp;
+    }
+    pp->C[1] = x;
+    pp->fix();
+  }
+  return x;
 }
 
-void cut(Node *x)
-{   access(x);
-    x->l->p = 0;
-    x->l = 0;
-    update(x);
-}
-
-void link(Node *x, Node *y)
-{   access(x);
-    access(y);
-    x->l = y;
-    y->p = x;
-    update(x);
-}
-
-Node *lca(Node *x, Node *y)
-{   access(x);
-    return access(y);
-}
-
-int depth(Node *x)
-{   access(x);
-    return x->sz - 1;
-}
-
-class LinkCut
-{   Node *x;
-
-    public:
-    LinkCut(int n)
-    {   x = new Node[n];
-        for(int i = 0; i < n; i++)
-        {   x[i].label = i;
-            update(&x[i]);
-        }
-    }
-
-    virtual ~LinkCut()
-    {   delete[] x;
-    }
-
-    void link(int u, int v)
-    {   ::link(&x[u], &x[v]);
-    }
-
-    void cut(int u)
-    {   ::cut(&x[u]);
-    }
-
-    int root(int u)
-    {   return ::root(&x[u])->label;
-    }
-
-    int depth(int u)
-    {   return ::depth(&x[u]);
-    }
-	
-	void del(int u, int v)
-	{
-		if(depth(u)<depth(v)) swap(u,v);
-		cut(u);
-	}
-	
-    int lca(int u, int v)
-    {   return ::lca(&x[u], &x[v])->label;
-    }
+vector<node_t> node;
 };
 //end Link-Cut Tree
 
@@ -4130,6 +4129,43 @@ public:
 			--bestLine;
 		return bestLine->valueAt(x);
 	}
+};
+
+//Convex Hull Dynamic (for Open-book OI, since it's short)
+const ll is_query = -(1LL<<62);
+struct Line {
+    ll m, b;
+    mutable function<const Line*()> succ;
+    bool operator<(const Line& rhs) const {
+        if (rhs.b != is_query) return m < rhs.m;
+        const Line* s = succ();
+        if (!s) return 0;
+        ll x = rhs.m;
+        return 1.0L * b - s->b < 1.0L *(s->m - m) * x;
+    }
+};
+struct ConvexHullDynamic : public multiset<Line> { // will maintain upper hull for maximum
+    bool bad(iterator y) {
+        auto z = next(y);
+        if (y == begin()) {
+            if (z == end()) return 0;
+            return y->m == z->m && y->b <= z->b;
+        }
+        auto x = prev(y);
+        if (z == end()) return y->m == x->m && y->b <= x->b;
+        return (x->b - y->b)*1.0L*(z->m - y->m) >= (y->b - z->b)*1.0L*(y->m - x->m);
+    }
+    void insert_line(ll m, ll b) {
+        auto y = insert({ m, b });
+        y->succ = [=] { return next(y) == end() ? 0 : &*next(y); };
+        if (bad(y)) { erase(y); return; }
+        while (next(y) != end() && bad(next(y))) erase(next(y));
+        while (y != begin() && bad(prev(y))) erase(prev(y));
+    }
+    ll eval(ll x) {
+        auto l = *lower_bound((Line) { x, is_query });
+        return l.m * x + l.b;
+    }
 };
 //end Matching
 
@@ -4677,24 +4713,24 @@ struct wavelet_tree
 //Combi Class
 struct Combi
 {
-	vector<ll> fact;
-	vector<ll> ifact;
-	vector<ll> inv;
-	vector<ll> pow2;
-	const int MOD = 1e9 + 7;
-	ll add(ll a, ll b)
+	vector<int> fact;
+	vector<int> ifact;
+	vector<int> inv;
+	vector<int> pow2;
+	const int MOD = (1e9 + 7);
+	int add(int a, int b)
 	{
 		a+=b;
 		while(a>=MOD) a-=MOD;
 		return a;
 	}
-	ll mult(ll a, ll b)
+	int mult(int a, int b)
 	{
-		return (a*b)%MOD;
+		return (a*1LL*b)%MOD;
 	}
-	ll modpow(ll a, ll b)
+	int modpow(int a, int b)
 	{
-		ll r=1;
+		int r=1;
 		while(b)
 		{
 			if(b&1) r=mult(r,a);
@@ -4703,13 +4739,14 @@ struct Combi
 		}
 		return r;
 	}
-	ll choose(ll a, ll b)
+	int choose(int a, int b)
 	{
 		if(a<b) return 0;
 		if(b==0) return 1;
+		if(a==b) return 1;
 		return mult(fact[a],mult(ifact[b],ifact[a-b]));
 	}
-	ll inverse(ll a)
+	int inverse(int a)
 	{
 		return modpow(a,MOD-2);
 	}
@@ -4726,9 +4763,17 @@ struct Combi
 		for(int i=1;i<=_n;i++)
 		{
 			pow2[i]=add(pow2[i-1],pow2[i-1]);
-			inv[i] = inverse(i);
 			fact[i]=mult(fact[i-1],i);
-			ifact[i]=mult(ifact[i-1],inv[i]);
+			//ifact[i]=mult(ifact[i-1],inv[i]);
+		}
+		ifact[_n] = inverse(fact[_n]);
+		for(int i=_n-1;i>=1;i--)
+		{
+		    ifact[i] = mult(ifact[i + 1], i + 1);
+		}
+		for(int i=1;i<=_n;i++)
+		{
+		    inv[i] = mult(fact[i-1],ifact[i]);
 		}
 	}
 };
