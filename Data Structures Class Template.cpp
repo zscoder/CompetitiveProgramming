@@ -4806,6 +4806,263 @@ while(q--)
 	}
 }
 //End Wavelet
+*/
+
+//Bridge Tree
+VI tree[N]; // The bridge edge tree formed from the given graph
+VI graph[N];int U[M],V[M];  //edge list representation of the graph. 
+bool isbridge[M]; // if i'th edge is a bridge edge or not 
+int visited[N];int arr[N],T; //supporting arrays
+int cmpno;
+queue<int> Q[N];
+ 
+int adj(int u,int e){
+    return U[e]==u?V[e]:U[e];
+}
+int dfs0(int u,int edge)    //marks all the bridges
+{
+    visited[u]=1;
+    arr[u]=T++;
+    int dbe = arr[u];
+    for(int i=0;i<(int)graph[u].size();i++)
+    {
+        int e = graph[u][i];
+        int w = adj(u,e);
+        if(!visited[w])
+            dbe = min(dbe,dfs0(w,e));
+        else if(e!=edge)
+            dbe = min(dbe,arr[w]);
+    }
+    if(dbe == arr[u] && edge!=-1)
+        isbridge[edge]=true;
+    return dbe;
+}
+ 
+void dfs1(int v) //Builds the tree with each edge a bridge from original graph
+{
+    int currcmp = cmpno;    // current component no.
+    Q[currcmp].push(v);    // A different queue for each component, coz   during bfs we shall go to another component (step of dfs) and then come   back to this one and continue our bfs
+    visited[v]=1;
+    while(!Q[currcmp].empty())    //bfs. Exploring all nodes of this  component
+    {
+        int u = Q[currcmp].front();    
+        Q[currcmp].pop();    
+        for(int i=0;i<(int)graph[u].size();i++)
+        {
+            int e = graph[u][i];
+            int w = adj(u,e);
+            if(visited[w])continue;
+            //if the edge under consideration is bridge and
+            //other side is not yet explored, go there (step of dfs)
+            if(isbridge[e])
+            {
+                cmpno++;
+                tree[currcmp].push_back(cmpno);
+                tree[cmpno].push_back(currcmp);
+                dfs1(w);
+            }
+            else     //else continue with our bfs
+            {
+                Q[currcmp].push(w);
+                visited[w]=1;
+            }
+        }
+    }
+}
+//End Bridge Tree
+
+//Block Cut Tree
+struct graph
+{
+	int n;
+	vector<vector<int>> adj;
+ 
+	graph(int n) : n(n), adj(n) {}
+ 
+	void add_edge(int u, int v)
+	{
+		adj[u].push_back(v);
+		adj[v].push_back(u);
+	}
+ 
+	int add_node()
+	{
+		adj.push_back({});
+		return n++;
+	}
+ 
+	vector<int>& operator[](int u) { return adj[u]; }
+};
+ 
+vector<vector<int>> biconnected_components(graph &adj)
+{
+	int n = adj.n;
+ 
+	vector<int> num(n), low(n), art(n), stk;
+	vector<vector<int>> comps;
+ 
+	function<void(int, int, int&)> dfs = [&](int u, int p, int &t)
+	{
+		num[u] = low[u] = ++t;
+		stk.push_back(u);
+ 
+		for (int v : adj[u]) if (v != p)
+		{
+			if (!num[v])
+			{
+				dfs(v, u, t);
+				low[u] = min(low[u], low[v]);
+ 
+				if (low[v] >= num[u])
+				{
+					art[u] = (num[u] > 1 || num[v] > 2);
+ 
+					comps.push_back({u});
+					while (comps.back().back() != v)
+						comps.back().push_back(stk.back()), stk.pop_back();
+				}
+			}
+			else low[u] = min(low[u], num[v]);
+		}
+	};
+ 
+	for (int u = 0, t; u < n; ++u)
+		if (!num[u]) dfs(u, -1, t = 0);
+ 
+	// build the block cut tree
+	function<graph()> build_tree = [&]()
+	{
+		graph tree(0);
+		vector<int> id(n);
+ 
+		for (int u = 0; u < n; ++u)
+			if (art[u]) id[u] = tree.add_node();
+ 
+		for (auto &comp : comps)
+		{
+			int node = tree.add_node();
+			for (int u : comp)
+				if (!art[u]) id[u] = node;
+				else tree.add_edge(node, id[u]);
+		}
+ 
+		return tree;
+	};
+ 
+	return comps;
+}
+//End Block Cut Tree
+
+//Palindromic Tree
+const int maxn = 1e6+ 1, sigma = 26;
+int len[maxn], link[maxn], to[maxn][sigma];
+int slink[maxn], diff[maxn], series_ans[maxn];
+int sz, last, n;
+char s[maxn];
+ 
+void init()
+{
+    s[n++] = -1;
+    link[0] = 1;
+    len[1] = -1;
+    sz = 2;
+}
+ 
+int get_link(int v)
+{
+    while(s[n - len[v] - 2] != s[n - 1]) v = link[v];
+    return v;
+}
+ 
+void add_letter(char c)
+{
+    s[n++] = c -= 'a';
+    last = get_link(last);
+    if(!to[last][c])
+    {
+        len[sz] = len[last] + 2;
+        link[sz] = to[get_link(link[last])][c];
+        diff[sz] = len[sz] - len[link[sz]];
+        if(diff[sz] == diff[link[sz]])
+            slink[sz] = slink[link[sz]];
+        else
+            slink[sz] = link[sz];
+        to[last][c] = sz++;
+    }
+    last = to[last][c];
+}
+
+int main()
+{
+	ios_base::sync_with_stdio(0); cin.tie(0);
+	string s; cin>>s;
+	string s2 = s;
+	int n=s.length();
+	string t;
+	for(int i=0;i<n/2;i++)
+	{
+		t+=s[i];
+		t+=s[n-1-i];
+	}
+	//build pal tre for t
+	init();
+    int ans[n + 1];
+    memset(ans, 0, sizeof(ans));
+    ans[0] = 1;
+    for(int i = 1; i <= n; i++)
+    {
+        add_letter(t[i - 1]);
+        for(int v = last; len[v] > 0; v = slink[v])
+        {
+            series_ans[v] = ans[i - (len[slink[v]] + diff[v])];
+            if(diff[v] == diff[link[v]])
+                series_ans[v] = add(series_ans[v], series_ans[link[v]]);
+            ans[i] = add(ans[i], series_ans[v]);
+        }
+        if(i&1) ans[i]=0;
+    }
+    cout<<ans[n]<<'\n';
+}
+//End Palindromic Tree
+
+//Z Algorithm
+int L = 0, R = 0;
+for (int i = 1; i < n; i++) {
+  if (i > R) {
+    L = R = i;
+    while (R < n && s[R-L] == s[R]) R++;
+    z[i] = R-L; R--;
+  } else {
+    int k = i-L;
+    if (z[k] < R-i+1) z[i] = z[k];
+    else {
+      L = i;
+      while (R < n && s[R-L] == s[R]) R++;
+      z[i] = R-L; R--;
+    }
+  }
+}
+//End Z Algorithm
+
+//KMP Algorithm
+vector<int> prefix_function (string Z) 
+{
+    int n = (int) Z.length();
+    vector<int> F (n);
+    F[0]=0;
+    for (int i=1; i<n; ++i) 
+    {
+        int j = F[i-1];
+        while (j > 0 && Z[i] != Z[j])
+		{
+            j = F[j-1];
+        }
+        if (Z[i] == Z[j])  ++j;
+        F[i] = j;
+    }
+    return F;
+}
+//End KMP Algorithm
 
 int main() //Testing Zone
 {
