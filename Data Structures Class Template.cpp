@@ -3278,7 +3278,7 @@ struct FFT
 		}
 	}
 
-	void mult(vector<int> &a, vector<int> &b, vector<int> &r)
+	void mult(vi &a, vi &b, vi &r)
 	{
 		int n = 1;
 		while(n < max(a.size(), b.size())) n <<= 1;
@@ -3286,16 +3286,8 @@ struct FFT
 		vector<base> ffa; vector<base> ffb;
 		base zero(0);
 		ffa.assign(n, zero); ffb.assign(n, zero);
-		for(int i = n - a.size(); i < n; i++)
-		{
-			ffa[i] = a[i-(n-a.size())];
-		}
-		for(int i = n - b.size(); i < n; i++)
-		{
-			ffb[i] = b[i-(n-b.size())];
-		}
-		reverse(ffa.begin(), ffa.end());
-		reverse(ffb.begin(), ffb.end());
+		for(int i=0;i<a.size();i++) ffa[i]=a[i];
+		for(int i=0;i<b.size();i++) ffb[i]=b[i];
 		fft(ffa, 0); fft(ffb, 0); //fft
 		for(int i = 0; i < n; i++)
 		{
@@ -3305,9 +3297,8 @@ struct FFT
 		r.resize(n);
 		for(int i = 0; i < n; i++)
 		{
-			r[i] = int(ffa[i].real() + 0.5);
+			r[i] = ll(ffa[i].real() + 0.5);
 		}
-		reverse(r.begin(), r.end());
 	}
 };
 //End FFT
@@ -3682,6 +3673,7 @@ struct SCC
 		sccidx.assign(n,-1);
 		scccnt = 0;
 		vec.clear();
+		topo.clear();
 		vec.resize(n);
 	}
 	
@@ -4809,13 +4801,13 @@ while(q--)
 */
 
 //Bridge Tree
-VI tree[N]; // The bridge edge tree formed from the given graph
-VI graph[N];int U[M],V[M];  //edge list representation of the graph. 
+vi tree[N]; // The bridge edge tree formed from the given graph
+vi graph[N];int U[M],V[M];  //edge list representation of the graph. 
 bool isbridge[M]; // if i'th edge is a bridge edge or not 
 int visited[N];int arr[N],T; //supporting arrays
 int cmpno;
 queue<int> Q[N];
- 
+
 int adj(int u,int e){
     return U[e]==u?V[e]:U[e];
 }
@@ -5063,6 +5055,171 @@ vector<int> prefix_function (string Z)
     return F;
 }
 //End KMP Algorithm
+
+//Real HLD
+void dfs_sz(int v = 0)
+{
+    sz[v] = 1;
+    for(auto &u: g[v])
+    {
+        dfs_sz(u);
+        sz[v] += sz[u];
+        if(sz[u] > sz[g[v][0]])
+            swap(u, g[v][0]);
+    }
+}
+
+void dfs_hld(int v = 0)
+{
+    in[v] = t++;
+    rin[in[v]] = v;
+    for(auto u: g[v])
+    {
+        nxt[u] = (u == g[v][0] ? nxt[v] : u);
+        dfs_hld(u);
+    }
+    out[v] = t;
+}
+//End Real HLD
+
+//Begin Aho Corasick
+const int MAXN = 404, MOD = 1e9 + 7, sigma = 26;
+ 
+int term[MAXN], len[MAXN], to[MAXN][sigma], link[MAXN], sz = 1;
+void add_str(string s)
+{
+    int cur = 0;
+    for(auto c: s)
+    {
+        if(!to[cur][c - 'a'])
+        {
+            to[cur][c - 'a'] = sz++;
+            len[to[cur][c - 'a']] = len[cur] + 1;
+        }
+        cur = to[cur][c - 'a'];
+    }
+    term[cur] = cur; 
+}
+ 
+void push_links()
+{
+    int que[sz];
+    int st = 0, fi = 1;
+    que[0] = 0;
+    while(st < fi)
+    {
+        int V = que[st++];
+        int U = link[V];
+        if(!term[V]) term[V] = term[U];
+        for(int c = 0; c < sigma; c++)
+        {
+            if(to[V][c])
+            {
+                link[to[V][c]] = V ? to[U][c] : 0;
+                que[fi++] = to[V][c];
+            }
+            else
+            {
+                to[V][c] = to[U][c];
+            }
+		}	
+    }
+}
+//End Aho Corasick
+
+//Begin Link Cut Tree
+struct monoid {
+	using type = int;
+	static type id() { return 0; }
+	static type op(const type& l, const type & r) { return l + r; }
+};
+
+template <typename M>
+class lct_node {
+	using T = typename M::type;
+	lct_node *l, *r, *p;
+	bool rev;
+	T val, all;
+
+	int pos() {
+		if (p && p->l == this) return -1;
+		if (p && p->r == this) return 1;
+		return 0;
+	}
+	void update() {
+		all = M::op(l ? l->all : M::id(), M::op(val, r ? r->all : M::id()));
+	}
+	void push() {
+		if (pos()) p->push();
+		if (rev) {
+			swap(l, r);
+			if (l) l->rev ^= true;
+			if (r) r->rev ^= true;
+			rev = false;
+		}
+	}
+	void rot() {
+		lct_node *par = p;
+		lct_node *mid;
+		if (p->l == this) {
+			mid = r;
+			r = par;
+			par->l = mid;
+		}
+		else {
+			mid = l;
+			l = par;
+			par->r = mid;
+		}
+		if (mid) mid->p = par;
+		p = par->p;
+		par->p = this;
+		if (p && p->l == par) p->l = this;
+		if (p && p->r == par) p->r = this;
+		par->update();
+		update();
+	}
+	void splay() {
+		push();
+		while (pos()) {
+			int st = pos() * p->pos();
+			if (!st) rot();
+			else if (st == 1) p->rot(), rot();
+			else rot(), rot();
+		}
+	}
+
+public:
+	lct_node(int v = 0) : l(nullptr), r(nullptr), p(nullptr), rev(false), val(v), all(v) {}
+	void expose() {
+		for (lct_node *x = this, *y = nullptr; x; y = x, x = x->p) x->splay(), x->r = y, x->update();
+		splay();
+	}
+	void link(lct_node *x) {
+		x->expose();
+		expose();
+		p = x;
+	}
+	void cut() {
+		expose();
+		l->p = nullptr;
+		l = nullptr;
+		update();
+	}
+	void evert() {
+		expose();
+		rev = true;
+	}
+	T get() const {
+		return val;
+	}
+	void update(T v) {
+		expose();
+		val = v;
+		update();
+	}
+}
+//End Link Cut Tree
 
 int main() //Testing Zone
 {
