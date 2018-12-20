@@ -5221,6 +5221,612 @@ public:
 }
 //End Link Cut Tree
 
+//Begin Linear Recurrence
+#define SZ 233333
+const int MOD=1e9+7; //or any prime
+ll qp(ll a,ll b)
+{
+	ll x=1; a%=MOD;
+	while(b)
+	{
+		if(b&1) x=x*a%MOD;
+		a=a*a%MOD; b>>=1;
+	}
+	return x;
+}
+namespace linear_seq {
+inline vector<int> BM(vector<int> x)
+{
+	vector<int> ls,cur; int lf,ld;
+	for(int i=0;i<int(x.size());++i)
+	{
+		ll t=-x[i]%MOD;
+		for(int j=0;j<int(cur.size());++j)
+			t=(t+x[i-j-1]*(ll)cur[j])%MOD;
+		if(!t) continue;
+		if(!cur.size()) {cur.resize(i+1); lf=i; ld=t; continue;}
+		ll k=-t*qp(ld,MOD-2)%MOD;
+		vector<int> c(i-lf-1); c.pb(-k);
+		for(int j=0;j<int(ls.size());++j) c.pb(ls[j]*k%MOD);
+		if(c.size()<cur.size()) c.resize(cur.size());
+		for(int j=0;j<int(cur.size());++j)
+			c[j]=(c[j]+cur[j])%MOD;
+		if(i-lf+(int)ls.size()>=(int)cur.size())
+			ls=cur,lf=i,ld=t;
+		cur=c;
+	}
+	vector<int>&o=cur;
+	for(int i=0;i<int(o.size());++i)
+		o[i]=(o[i]%MOD+MOD)%MOD;
+	return o;
+}
+int N; ll a[SZ],h[SZ],t_[SZ],s[SZ],t[SZ];
+inline void mull(ll*p,ll*q)
+{
+	for(int i=0;i<N+N;++i) t_[i]=0;
+	for(int i=0;i<N;++i) if(p[i])
+		for(int j=0;j<N;++j)
+			t_[i+j]=(t_[i+j]+p[i]*q[j])%MOD;
+	for(int i=N+N-1;i>=N;--i) if(t_[i])
+		for(int j=N-1;~j;--j)
+			t_[i-j-1]=(t_[i-j-1]+t_[i]*h[j])%MOD;
+	for(int i=0;i<N;++i) p[i]=t_[i];
+}
+inline ll calc(ll K)
+{
+	for(int i=N;~i;--i) s[i]=t[i]=0;
+	s[0]=1; if(N!=1) t[1]=1; else t[0]=h[0];
+	for(;K;mull(t,t),K>>=1) if(K&1) mull(s,t); ll su=0;
+	for(int i=0;i<N;++i) su=(su+s[i]*a[i])%MOD;
+	return (su%MOD+MOD)%MOD;
+}
+inline int work(vector<int> x,ll n)
+{
+	if(n<int(x.size())) return x[n];
+	vector<int> v=BM(x); N=v.size(); if(!N) return 0;
+	for(int i=0;i<N;++i) h[i]=v[i],a[i]=x[i];
+	return calc(n);
+}
+}
+using linear_seq::work;
+int main()
+{
+	cout<<work({1,1,2,3,5,8,13,21},10)<<"\n";
+}
+//End Linear Recurrence
+
+//Begin Edmond Blossom
+#define MAX 100
+#define undef -2
+#define empty -1
+#define noEdge 0
+#define unmatched 1
+#define matched 2
+#define forward 0
+#define reverse 0
+
+                    //Labels are the key to this implementation of the algorithm.
+struct Label {      //An even label in a vertex means there's an alternating path
+       int even;    //of even length starting from the root node that ends on the
+       int odd[2];  //vertex. To find this path, the backtrace() function is called,
+};                  //constructing the path by following the content of the labels.
+                    //Odd labels are similar, the only difference is that base nodes
+                    //of blossoms inside other blossoms may have two. More on this later.
+
+
+struct elem {            //This is the element of the queue of labels to be analyzed by
+       int vertex,type;  //the augmentMatching() procedure. Each element contains the vertex
+};                       //where the label is and its type, odd or even.
+
+
+int g[MAX][MAX];         //The graph, as an adjacency matrix.
+
+                         //blossom[i] contains the base node of the blossom the vertex i
+int blossom[MAX];        //is in. This, together with labels eliminates the need to
+                         //contract the graph.
+
+                              //The path arrays are where the backtrace() routine will
+int path[2][MAX],endPath[2];  //store the paths it finds. Only two paths need to be
+                              //stored. endPath[p] denotes the end of path[p].
+
+bool match[MAX];  //An array of flags. match[i] stores if vertex i is in the matching.
+
+                  //label[i] contains the label assigned to vertex i. It may be undefined,
+Label label[MAX]; //empty (meaning the node is a root) and a node might have even and odd
+                  //labels at the same time, which is the case for nonbase nodes of blossoms
+
+elem queue[2*MAX];         //The queue is necessary for efficiently scanning all labels.
+int queueFront,queueBack;  //A label is enqueued when assigned and dequeued after scanned.
+
+void initGraph(int n){
+     for (int i=0; i<n; i++)
+         for (int j=0; j<n; j++) g[i][j]=noEdge;
+}
+
+int readGraph(){
+     int n,e,a,b;
+     scanf(" %d %d",&n,&e);      //The graph is read and its edges are unmatched by default.
+     initGraph(n);               //Since C++ arrays are 0..n-1 and input 1..n , subtractions 
+     for (int i=0; i<e; i++){    //are made for better memory usage.
+         scanf(" %d %d",&a,&b);
+         if (a!=b)
+            g[a-1][b-1]=g[b-1][a-1]=unmatched;
+     }
+     return n;
+}
+
+void initAlg(int n){             //Initializes all data structures for the augmentMatching()
+     queueFront=queueBack=0;     //function begin. At the start, all labels are undefined,
+     for (int i=0; i<n; i++){    //the queue is empty and a node alone is its own blossom.
+         blossom[i]=i;
+         label[i].even=label[i].odd[0]=label[i].odd[1]=undef;
+     }
+}
+
+void backtrace (int vert, int pathNum, int stop, int parity, int direction){
+     if (vert==stop) return;           //pathNum is the number of the path to store
+     else if (parity==0){              //vert and parity determine the label to be read.
+        if (direction==reverse){
+           backtrace(label[vert].even,pathNum,stop,(parity+1)%2,reverse);
+           path[pathNum][endPath[pathNum]++]=vert;
+        }                             //forward means the vertices called first enter
+        else if (direction==forward){ //the path first, reverse is the opposite.
+             path[pathNum][endPath[pathNum]++]=vert;
+             backtrace(label[vert].even,pathNum,stop,(parity+1)%2,forward);
+        }
+     }
+     /*
+       stop is the stopping condition for the recursion.
+       Recursion is necessary because of the possible dual odd labels.
+       having empty at stop means the recursion will only stop after
+       the whole tree has been climbed. If assigned to a vertex, it'll stop
+       once it's reached.
+     */
+     else if (parity==1 && label[vert].odd[1]==undef){
+        if (direction==reverse){
+           backtrace(label[vert].odd[0],pathNum,stop,(parity+1)%2,reverse);
+           path[pathNum][endPath[pathNum]++]=vert;
+        }
+        else if (direction==forward){
+             path[pathNum][endPath[pathNum]++]=vert;
+             backtrace(label[vert].odd[0],pathNum,stop,(parity+1)%2,forward);
+        }
+     }
+     /*
+       Dual odd labels are interpreted as follows:
+       There exists an odd length alternating path starting from the root to this
+       vertex. To find this path, backtrace from odd[0] to the top of the tree and
+       from odd[1] to the vertex itself. This, put in the right order, will
+       constitute said path.
+     */
+     else if (parity==1 && label[vert].odd[1]!=undef){
+          if (direction==reverse){
+             backtrace(label[vert].odd[0],pathNum,empty,(parity+1)%2,reverse);
+             backtrace(label[vert].odd[1],pathNum,vert,(parity+1)%2,forward);
+             path[pathNum][endPath[pathNum]++]=vert;
+          }
+          else if (direction==forward){
+               backtrace(label[vert].odd[1],pathNum,vert,(parity+1)%2,reverse);
+               backtrace(label[vert].odd[0],pathNum,empty,(parity+1)%2,forward);
+               path[pathNum][endPath[pathNum]++]=vert;
+          }
+     }
+}
+
+void enqueue (int vert, int t){
+     elem tmp;               //Enqueues labels for scanning.
+     tmp.vertex=vert;        //No label that's dequeued during the execution
+     tmp.type=t;             //of augmentMatching() goes back to the queue.
+     queue[queueBack++]=tmp; //Thus, circular arrays are unnecessary.
+}
+
+void newBlossom (int a, int b){     //newBlossom() will be called after the paths are evaluated.
+     int i,base,innerBlossom,innerBase;
+     for (i=0; path[0][i]==path[1][i]; i++);   //Find the lowest common ancestor of a and b
+     i--;                                      //it will be used to represent the blossom.
+     base=blossom[path[0][i]];                 //Unless it's already contained in another...
+                                               //In this case, all will be put in the older one.
+     for (int j=i; j<endPath[0]; j++) blossom[path[0][j]]=base;
+     for (int j=i+1; j<endPath[1]; j++) blossom[path[1][j]]=base; //Set all nodes to this
+     for (int p=0; p<2; p++){                                     //new blossom.
+        for (int j=i+1; j<endPath[p]-1; j++){
+            if (label[path[p][j]].even==undef){        //Now, new labels will be applied
+               label[path[p][j]].even=path[p][j+1];    //to indicate the existence of even
+               enqueue(path[p][j],0);                  //and odd length paths.
+            }
+            else if (label[path[p][j]].odd[0]==undef && label[path[p][j+1]].even==undef){
+                 label[path[p][j]].odd[0]=path[p][j+1];
+                 enqueue(path[p][j],1);                 //Labels will only be put if the vertex
+            }                                           //doesn't have one.
+            
+            else if (label[path[p][j]].odd[0]==undef && label[path[p][j+1]].even!=undef){
+                 /*
+                   If a vertex doesn't have an odd label, but the next one in the path
+                   has an even label, it means that the current vertex is the base node
+                   of a previous blossom and the next one is contained within it.
+                   The standard labeling procedure will fail in this case. This is fixed
+                   by going to the last node in the path inside this inner blossom and using
+                   it to apply the dual label.
+                   Refer to backtrace() to know how the path will be built.
+                 */
+                 innerBlossom=blossom[path[p][j]];
+                 innerBase=j;
+                 for (; blossom[j]==innerBlossom && j<endPath[p]-1; j++);
+                 j--;
+                 label[path[p][innerBase]].odd[0]=path[p][j+1];
+                 label[path[p][innerBase]].odd[1]=path[p][j];
+                 enqueue(path[p][innerBase],1);
+            }
+        }
+     }
+     if (g[a][b]==unmatched){           //All nodes have received labels, except
+        if (label[a].odd[0]==undef){    //the ones that called the function in
+           label[a].odd[0]=b;           //the first place. It's possible to
+           enqueue(a,1);                //find out how to label them by
+        }                               //analyzing if they're in the matching.
+        if (label[b].odd[0]==undef){
+           label[b].odd[0]=a;
+           enqueue(b,1);
+        }                               
+     }
+     else if (g[a][b]==matched){
+          if (label[a].even==undef){
+             label[a].even=b;
+             enqueue(a,0);
+          }
+          if (label[b].even==undef){
+             label[b].even=a;
+             enqueue(b,0);
+          }
+     }
+}
+
+void augmentPath (){           //An augmenting path has been found in the matching
+     int a,b;                  //and is contained in the path arrays.
+     for (int p=0; p<2; p++){
+         for (int i=0; i<endPath[p]-1; i++){
+             a=path[p][i];             //Because of labeling, this path is already
+             b=path[p][i+1];           //lifted and can be augmented by simple
+             if (g[a][b]==unmatched)   //changing of the matching status.
+                g[a][b]=g[b][a]=matched;
+             else if (g[a][b]==matched)
+                  g[a][b]=g[b][a]=unmatched;
+         }
+     }
+     a=path[0][endPath[0]-1];
+     b=path[1][endPath[1]-1];
+     if (g[a][b]==unmatched) g[a][b]=g[b][a]=matched;
+     else if (g[a][b]==matched) g[a][b]=g[b][a]=unmatched;
+     //After this, a and b are included in the matching.
+     match[path[0][0]]=match[path[1][0]]=true;
+}
+
+bool augmentMatching (int n){  //The main analyzing function, with the
+     int node,nodeLabel;       //goal of finding augmenting paths or
+     initAlg(n);               //concluding that the matching is maximum.
+     for (int i=0; i<n; i++) if (!match[i]){
+         label[i].even=empty;
+         enqueue(i,0);          //Initialize the queue with the exposed vertices,
+     }                          //making them the roots in the forest.
+     
+     while (queueFront<queueBack){
+         node=queue[queueFront].vertex;
+         nodeLabel=queue[queueFront].type;
+         if (nodeLabel==0){
+            for (int i=0; i<n; i++) if (g[node][i]==unmatched){
+                if (blossom[node]==blossom[i]);
+                //Do nothing. Edges inside the same blossom have no meaning.
+                else if (label[i].even!=undef){
+                     /*
+                       The tree has reached a vertex with a label.
+                       The parity of this label indicates that an odd length
+                       alternating path has been found. If this path is between
+                       roots, we have an augmenting path, else there's an
+                       alternating cycle, a blossom.
+                     */
+                     endPath[0]=endPath[1]=0;
+                     backtrace(node,0,empty,0,reverse);
+                     backtrace(i,1,empty,0,reverse);
+                     //Call the backtracing function to find out.
+                     if (path[0][0]==path[1][0]) newBlossom(node,i);
+                     /*
+                       If the same root node is reached, a blossom was found.
+                       Start the labelling procedure to create pseudo-contraction.
+                     */
+                     else {
+                          augmentPath();
+                          return true;
+                          /*
+                            If the roots are different, we have an augmenting path.
+                            Improve the matching by augmenting this path.
+                            Now some labels might make no sense, stop the function,
+                            returning that it was successful in improving.
+                          */
+                     }
+                }
+                else if (label[i].even==undef && label[i].odd[0]==undef){
+                     //If an unseen vertex is found, report the existing path
+                     //by labeling it accordingly.
+                     label[i].odd[0]=node;
+                     enqueue(i,1);
+                }
+            }
+         }
+         else if (nodeLabel==1){ //Similar to above.
+            for (int i=0; i<n; i++) if (g[node][i]==matched){
+                if (blossom[node]==blossom[i]);
+                else if (label[i].odd[0]!=undef){
+                     endPath[0]=endPath[1]=0;
+                     backtrace(node,0,empty,1,reverse);
+                     backtrace(i,1,empty,1,reverse);
+                     if (path[0][0]==path[1][0]) newBlossom(node,i);
+                     else {
+                          augmentPath();
+                          return true;
+                     }
+                }
+                else if (label[i].even==undef && label[i].odd[0]==undef){
+                     label[i].even=node;
+                     enqueue(i,0);
+                }
+            }
+         }
+         /*
+           The scanning of this label is complete, dequeue it and
+           keep going to the next one.
+         */
+         queueFront++;
+     }
+     /*
+       If the function reaches this point, the queue is empty, all
+       labels have been scanned. The algorithm couldn't find an augmenting
+       path. Therefore, it concludes the matching is maximum.
+     */
+     return false;
+}
+
+void findMaximumMatching (int n){
+     //Initialize it with the empty matching.
+     for (int i=0; i<n; i++) match[i]=false;
+     //Run augmentMatching(), it'll keep improving the matching.
+     //Eventually, it will no longer find a path and break the loop,
+     //at this point, the current matching is maximum.
+     while (augmentMatching(n));
+}
+
+int main(){
+    int n;
+    n=readGraph();
+    findMaximumMatching(n);
+    for (int i=0; i<n; i++){
+        for (int j=i+1; j<n; j++) if (g[i][j]==matched)
+            printf("%d %d\n",i+1,j+1);
+    }
+    return 0;
+}
+//End Edmond Blossom
+
+//Max Weight Matching
+#define DIST(e) (lab[e.u]+lab[e.v]-g[e.u][e.v].w*2)
+using namespace std;
+typedef long long ll;
+const int N=1023,INF=1e9;
+struct Edge
+{
+	int u,v,w;
+} g[N][N];
+int n,m,n_x,lab[N],match[N],slack[N],st[N],pa[N],flower_from[N][N],S[N],vis[N];
+vector<int> flower[N];
+deque<int> q;
+void update_slack(int u,int x)
+{
+	if(!slack[x]||DIST(g[u][x])<DIST(g[slack[x]][x]))slack[x]=u;
+}
+void set_slack(int x)
+{
+	slack[x]=0;
+	for(int u=1; u<=n; ++u)
+		if(g[u][x].w>0&&st[u]!=x&&S[st[u]]==0)update_slack(u,x);
+}
+void q_push(int x)
+{
+	if(x<=n)return q.push_back(x);
+	for(int i=0; i<flower[x].size(); i++)q_push(flower[x][i]);
+}
+void set_st(int x,int b)
+{
+	st[x]=b;
+	if(x<=n)return;
+	for(int i=0; i<flower[x].size(); ++i)set_st(flower[x][i],b);
+}
+int get_pr(int b,int xr)
+{
+	int pr=find(flower[b].begin(),flower[b].end(),xr)-flower[b].begin();
+	if(pr%2==1) //檢查他在前一層圖是奇點還是偶點
+	{
+		reverse(flower[b].begin()+1,flower[b].end());
+		return (int)flower[b].size()-pr;
+	}
+	else return pr;
+}
+void set_match(int u,int v)
+{
+	match[u]=g[u][v].v;
+	if(u<=n)return;
+	Edge e=g[u][v];
+	int xr=flower_from[u][e.u],pr=get_pr(u,xr);
+	for(int i=0; i<pr; ++i)set_match(flower[u][i],flower[u][i^1]);
+	set_match(xr,v);
+	rotate(flower[u].begin(),flower[u].begin()+pr,flower[u].end());
+}
+void augment(int u,int v)
+{
+	int xnv=st[match[u]];
+	set_match(u,v);
+	if(!xnv)return;
+	set_match(xnv,st[pa[xnv]]);
+	augment(st[pa[xnv]],xnv);
+}
+int get_lca(int u,int v)
+{
+	static int t=0;
+	for(++t; u||v; swap(u,v))
+	{
+		if(u==0)continue;
+		if(vis[u]==t)return u;
+		vis[u]=t;//這種方法可以不用清空v陣列
+		u=st[match[u]];
+		if(u)u=st[pa[u]];
+	}
+	return 0;
+}
+void add_blossom(int u,int lca,int v)
+{
+	int b=n+1;
+	while(b<=n_x&&st[b])++b;
+	if(b>n_x)++n_x;
+	lab[b]=0,S[b]=0;
+	match[b]=match[lca];
+	flower[b].clear();
+	flower[b].push_back(lca);
+	for(int x=u,y; x!=lca; x=st[pa[y]])
+		flower[b].push_back(x),flower[b].push_back(y=st[match[x]]),q_push(y);
+	reverse(flower[b].begin()+1,flower[b].end());
+	for(int x=v,y; x!=lca; x=st[pa[y]])
+		flower[b].push_back(x),flower[b].push_back(y=st[match[x]]),q_push(y);
+	set_st(b,b);
+	for(int x=1; x<=n_x; ++x)g[b][x].w=g[x][b].w=0;
+	for(int x=1; x<=n; ++x)flower_from[b][x]=0;
+	for(int i=0; i<flower[b].size(); ++i)
+	{
+		int xs=flower[b][i];
+		for(int x=1; x<=n_x; ++x)
+			if(g[b][x].w==0||DIST(g[xs][x])<DIST(g[b][x]))
+				g[b][x]=g[xs][x],g[x][b]=g[x][xs];
+		for(int x=1; x<=n; ++x)
+			if(flower_from[xs][x])flower_from[b][x]=xs;
+	}
+	set_slack(b);
+}
+void expand_blossom(int b)  // S[b] == 1
+{
+	for(int i=0; i<flower[b].size(); ++i)
+		set_st(flower[b][i],flower[b][i]);
+	int xr=flower_from[b][g[b][pa[b]].u],pr=get_pr(b,xr);
+	for(int i=0; i<pr; i+=2)
+	{
+		int xs=flower[b][i],xns=flower[b][i+1];
+		pa[xs]=g[xns][xs].u;
+		S[xs]=1,S[xns]=0;
+		slack[xs]=0,set_slack(xns);
+		q_push(xns);
+	}
+	S[xr]=1,pa[xr]=pa[b];
+	for(int i=pr+1; i<flower[b].size(); ++i)
+	{
+		int xs=flower[b][i];
+		S[xs]=-1,set_slack(xs);
+	}
+	st[b]=0;
+}
+bool on_found_Edge(const Edge &e)
+{
+	int u=st[e.u],v=st[e.v];
+	if(S[v]==-1)
+	{
+		pa[v]=e.u,S[v]=1;
+		int nu=st[match[v]];
+		slack[v]=slack[nu]=0;
+		S[nu]=0,q_push(nu);
+	}
+	else if(S[v]==0)
+	{
+		int lca=get_lca(u,v);
+		if(!lca)return augment(u,v),augment(v,u),1;
+		else add_blossom(u,lca,v);
+	}
+	return 0;
+}
+bool matching()
+{
+	fill(S,S+n_x+1,-1),fill(slack,slack+n_x+1,0);
+	q.clear();
+	for(int x=1; x<=n_x; ++x)
+		if(st[x]==x&&!match[x])pa[x]=0,S[x]=0,q_push(x);
+	if(q.empty())return 0;
+	for(;;)
+	{
+		while(q.size())
+		{
+			int u=q.front();
+			q.pop_front();
+			if(S[st[u]]==1)continue;
+			for(int v=1; v<=n; ++v)
+				if(g[u][v].w>0&&st[u]!=st[v])
+				{
+					if(DIST(g[u][v])==0)
+					{
+						if(on_found_Edge(g[u][v]))return 1;
+					}
+					else update_slack(u,st[v]);
+				}
+		}
+		int d=INF;
+		for(int b=n+1; b<=n_x; ++b)
+			if(st[b]==b&&S[b]==1)d=min(d,lab[b]/2);
+		for(int x=1; x<=n_x; ++x)
+			if(st[x]==x&&slack[x])
+			{
+				if(S[x]==-1)d=min(d,DIST(g[slack[x]][x]));
+				else if(S[x]==0)d=min(d,DIST(g[slack[x]][x])/2);
+			}
+		for(int u=1; u<=n; ++u)
+		{
+			if(S[st[u]]==0)
+			{
+				if(lab[u]<=d)return 0;
+				lab[u]-=d;
+			}
+			else if(S[st[u]]==1)lab[u]+=d;
+		}
+		for(int b=n+1; b<=n_x; ++b)
+			if(st[b]==b)
+			{
+				if(S[st[b]]==0)lab[b]+=d*2;
+				else if(S[st[b]]==1)lab[b]-=d*2;
+			}
+		q.clear();
+		for(int x=1; x<=n_x; ++x)
+			if(st[x]==x&&slack[x]&&st[slack[x]]!=x&&DIST(g[slack[x]][x])==0)
+				if(on_found_Edge(g[slack[x]][x]))return 1;
+		for(int b=n+1; b<=n_x; ++b)
+			if(st[b]==b&&S[b]==1&&lab[b]==0)expand_blossom(b);
+	}
+	return 0;
+}
+pair<ll,int> weight_blossom()
+{
+	fill(match,match+n+1,0);
+	n_x=n;
+	int n_matches=0;
+	ll tot_weight=0;
+	for(int u=0; u<=n; ++u)st[u]=u,flower[u].clear();
+	int w_max=0;
+	for(int u=1; u<=n; ++u)
+		for(int v=1; v<=n; ++v)
+		{
+			flower_from[u][v]=(u==v?u:0);
+			w_max=max(w_max,g[u][v].w);
+		}
+	for(int u=1; u<=n; ++u)lab[u]=w_max;
+	while(matching())++n_matches;
+	for(int u=1; u<=n; ++u)
+		if(match[u]&&match[u]<u)
+			tot_weight+=g[u][match[u]].w;
+	return make_pair(tot_weight,n_matches);
+}
+//End Max Weight Matching
+
 int main() //Testing Zone
 {
 	ios_base::sync_with_stdio(0); cin.tie(0);
