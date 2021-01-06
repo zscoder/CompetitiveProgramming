@@ -372,6 +372,7 @@ struct NumberTheory
 	vector<bool> prime;
 	vector<ll> totient;
 	vector<ll> sumdiv;
+	vector<ll> mobius;
 	vector<ll> bigdiv;
 	void Sieve(ll n)
 	{
@@ -437,6 +438,24 @@ struct NumberTheory
 				for (int j = i; j <= n; j += i)
 				{
 					totient[j] -= totient[j] / i;
+				}
+			}
+		}
+	}
+	void SieveMob(ll n)
+	{
+		mobius.resize(n+1,0);
+		mobius[1] = 1;
+		for (int i = 2; i <= n; ++i) {
+			if (prime[i]) {
+				mobius[i] = -1;				//i is prime
+			}
+			for (int j = 0; j < primes.size () && i * primes[j] <= n; ++j) {
+				if (i % primes[j] == 0) {
+					mobius[i * primes[j]] = 0;//prime[j] divides i
+					break;
+				} else {
+					mobius[i * primes[j]] = mobius[i] * -1;	//prime[j] does not divide i
 				}
 			}
 		}
@@ -1176,11 +1195,12 @@ struct Graph
 		dist.assign(n, INFI);
 		par.assign(n, -1);
 		dist[s] = 0; par[s] = -1;
-		priority_queue<ii, vector<ii>, greater<ii> > pq;
-		pq.push(ii(0, s));
+		priority_queue<pair<ll,ll> , vector<pair<ll,ll> >, greater<pair<ll,ll> > > pq;
+		pq.push(mp(0, s));
 		while(!pq.empty())
 		{
 			int u = pq.top().se; ll d = pq.top().fi; pq.pop();
+			if(d>dist[u]) continue;
 			for(int i = 0; i < adj[u].size(); i++)
 			{
 				int v = adj[u][i].v; ll w = adj[u][i].weight;
@@ -1188,7 +1208,7 @@ struct Graph
 				{
 					dist[v] = d + w;
 					par[v] = u;
-					pq.push(ii(dist[v], v));
+					pq.push(mp(dist[v], v));
 				}
 			}
 		}
@@ -4702,6 +4722,35 @@ struct wavelet_tree
 	}
 };
 
+wavelet_tree T(a+1, a+n+1, 1, MAX);
+cin >> q;
+while(q--)
+{
+	int x;
+	cin >> x;
+	cin >> l >> r >> k;
+	if(x == 0)
+	{
+		//kth smallest
+		cout << "Kth smallest: ";
+		cout << T.kth(l, r, k) << endl;
+	}
+	if(x == 1)
+	{
+		//less than or equal to K
+		cout << "LTE: ";
+		cout << T.LTE(l, r, k) << endl;
+	}
+	if(x == 2)
+	{
+		//count occurence of K in [l, r]
+		cout << "Occurence of K: ";
+		cout << T.count(l, r, k) << endl;
+	}
+}
+//End Wavelet
+
+
 //Combi Class
 struct Combi
 {
@@ -4716,9 +4765,17 @@ struct Combi
 		while(a>=MOD) a-=MOD;
 		return a;
 	}
+	void radd(int &a, int b)
+	{
+		a=add(a,b); 
+	}
 	int mult(int a, int b)
 	{
 		return (a*1LL*b)%MOD;
+	}
+	void rmult(int &a, int b)
+	{
+		a=mult(a,b);
 	}
 	int modpow(int a, int b)
 	{
@@ -4770,35 +4827,6 @@ struct Combi
 	}
 };
 
-/*
-wavelet_tree T(a+1, a+n+1, 1, MAX);
-cin >> q;
-while(q--)
-{
-	int x;
-	cin >> x;
-	cin >> l >> r >> k;
-	if(x == 0)
-	{
-		//kth smallest
-		cout << "Kth smallest: ";
-		cout << T.kth(l, r, k) << endl;
-	}
-	if(x == 1)
-	{
-		//less than or equal to K
-		cout << "LTE: ";
-		cout << T.LTE(l, r, k) << endl;
-	}
-	if(x == 2)
-	{
-		//count occurence of K in [l, r]
-		cout << "Occurence of K: ";
-		cout << T.count(l, r, k) << endl;
-	}
-}
-//End Wavelet
-*/
 
 //Bridge Tree
 vi tree[N]; // The bridge edge tree formed from the given graph
@@ -5220,80 +5248,6 @@ public:
 	}
 }
 //End Link Cut Tree
-
-//Begin Linear Recurrence
-#define SZ 233333
-const int MOD=1e9+7; //or any prime
-ll qp(ll a,ll b)
-{
-	ll x=1; a%=MOD;
-	while(b)
-	{
-		if(b&1) x=x*a%MOD;
-		a=a*a%MOD; b>>=1;
-	}
-	return x;
-}
-namespace linear_seq {
-inline vector<int> BM(vector<int> x)
-{
-	vector<int> ls,cur; int lf,ld;
-	for(int i=0;i<int(x.size());++i)
-	{
-		ll t=-x[i]%MOD;
-		for(int j=0;j<int(cur.size());++j)
-			t=(t+x[i-j-1]*(ll)cur[j])%MOD;
-		if(!t) continue;
-		if(!cur.size()) {cur.resize(i+1); lf=i; ld=t; continue;}
-		ll k=-t*qp(ld,MOD-2)%MOD;
-		vector<int> c(i-lf-1); c.pb(-k);
-		for(int j=0;j<int(ls.size());++j) c.pb(ls[j]*k%MOD);
-		if(c.size()<cur.size()) c.resize(cur.size());
-		for(int j=0;j<int(cur.size());++j)
-			c[j]=(c[j]+cur[j])%MOD;
-		if(i-lf+(int)ls.size()>=(int)cur.size())
-			ls=cur,lf=i,ld=t;
-		cur=c;
-	}
-	vector<int>&o=cur;
-	for(int i=0;i<int(o.size());++i)
-		o[i]=(o[i]%MOD+MOD)%MOD;
-	return o;
-}
-int N; ll a[SZ],h[SZ],t_[SZ],s[SZ],t[SZ];
-inline void mull(ll*p,ll*q)
-{
-	for(int i=0;i<N+N;++i) t_[i]=0;
-	for(int i=0;i<N;++i) if(p[i])
-		for(int j=0;j<N;++j)
-			t_[i+j]=(t_[i+j]+p[i]*q[j])%MOD;
-	for(int i=N+N-1;i>=N;--i) if(t_[i])
-		for(int j=N-1;~j;--j)
-			t_[i-j-1]=(t_[i-j-1]+t_[i]*h[j])%MOD;
-	for(int i=0;i<N;++i) p[i]=t_[i];
-}
-inline ll calc(ll K)
-{
-	for(int i=N;~i;--i) s[i]=t[i]=0;
-	s[0]=1; if(N!=1) t[1]=1; else t[0]=h[0];
-	for(;K;mull(t,t),K>>=1) if(K&1) mull(s,t); ll su=0;
-	for(int i=0;i<N;++i) su=(su+s[i]*a[i])%MOD;
-	return (su%MOD+MOD)%MOD;
-}
-inline int work(vector<int> x,ll n)
-{
-	if(n<int(x.size())) return x[n];
-	vector<int> v=BM(x); N=v.size(); if(!N) return 0;
-	for(int i=0;i<N;++i) h[i]=v[i],a[i]=x[i];
-	return calc(n);
-}
-}
-using linear_seq::work;
-int main()
-{
-	cout<<work({1,1,2,3,5,8,13,21},10)<<"\n";
-}
-//End Linear Recurrence
 
 //Begin Edmond Blossom
 #define MAX 100
@@ -5928,6 +5882,1676 @@ int main()
 	cout<<work({1,1,2,3,5,8,13,21},10)<<"\n";
 }
 //End Linear Recurrence
+
+//Begin Manachar
+vector<int> pal_array(string s)
+{
+    int n = s.size();
+    s = "@" + s + "$";
+    vector<int> len(n + 1);
+    int l = 1, r = 1;
+    for(int i = 1; i <= n; i++)
+    {
+        len[i] = min(r - i, len[l + (r - i)]);
+        while(s[i - len[i]] == s[i + len[i]])
+            len[i]++;
+        if(i + len[i] > r)
+        {
+            l = i - len[i];
+            r = i + len[i];
+        }
+    }
+    len.erase(begin(len));
+    return len;
+}
+// calculates half-length of maximum odd palindrome with center in i
+//"In case of even palindromes I suggest to use the same code with the string s1#s2#... #sn" - adamant
+//End Manachar
+
+//Polynomial
+namespace algebra {
+	const int inf = 1e9;
+	const int magic = 500; // threshold for sizes to run the naive algo
+	
+	namespace fft {
+		const int maxn = 1 << 18;
+
+		typedef double ftype;
+		typedef complex<ftype> point;
+
+		point w[maxn];
+		const ftype pi = acos(-1);
+		bool initiated = 0;
+		void init() {
+			if(!initiated) {
+				for(int i = 1; i < maxn; i *= 2) {
+					for(int j = 0; j < i; j++) {
+						w[i + j] = polar(ftype(1), pi * j / i);
+					}
+				}
+				initiated = 1;
+			}
+		}
+		template<typename T>
+		void fft(T *in, point *out, int n, int k = 1) {
+			if(n == 1) {
+				*out = *in;
+			} else {
+				n /= 2;
+				fft(in, out, n, 2 * k);
+				fft(in + k, out + n, n, 2 * k);
+				for(int i = 0; i < n; i++) {
+					auto t = out[i + n] * w[i + n];
+					out[i + n] = out[i] - t;
+					out[i] += t;
+				}
+			}
+		}
+		
+		template<typename T>
+		void mul_slow(vector<T> &a, const vector<T> &b) {
+			vector<T> res(a.size() + b.size() - 1);
+			for(size_t i = 0; i < a.size(); i++) {
+				for(size_t j = 0; j < b.size(); j++) {
+					res[i + j] += a[i] * b[j];
+				}
+			}
+			a = res;
+		}
+		
+		
+		template<typename T>
+		void mul(vector<T> &a, const vector<T> &b) {
+			if(min(a.size(), b.size()) < magic) {
+				mul_slow(a, b);
+				return;
+			}
+			init();
+			static const int shift = 15, mask = (1 << shift) - 1;
+			size_t n = a.size() + b.size() - 1;
+			while(__builtin_popcount(n) != 1) {
+				n++;
+			}
+			a.resize(n);
+			static point A[maxn], B[maxn];
+			static point C[maxn], D[maxn];
+			for(size_t i = 0; i < n; i++) {
+				A[i] = point(a[i] & mask, a[i] >> shift);
+				if(i < b.size()) {
+					B[i] = point(b[i] & mask, b[i] >> shift);
+				} else {
+					B[i] = 0;
+				}
+			}
+			fft(A, C, n); fft(B, D, n);
+			for(size_t i = 0; i < n; i++) {
+				point c0 = C[i] + conj(C[(n - i) % n]);
+				point c1 = C[i] - conj(C[(n - i) % n]);
+				point d0 = D[i] + conj(D[(n - i) % n]);
+				point d1 = D[i] - conj(D[(n - i) % n]);
+				A[i] = c0 * d0 - point(0, 1) * c1 * d1;
+				B[i] = c0 * d1 + d0 * c1;
+			}
+			fft(A, C, n); fft(B, D, n);
+			reverse(C + 1, C + n);
+			reverse(D + 1, D + n);
+			int t = 4 * n;
+			for(size_t i = 0; i < n; i++) {
+				int64_t A0 = llround(real(C[i]) / t);
+				T A1 = llround(imag(D[i]) / t);
+				T A2 = llround(imag(C[i]) / t);
+				a[i] = A0 + (A1 << shift) + (A2 << 2 * shift);
+			}
+			return;
+		}
+	}
+	template<typename T>
+	T bpow(T x, size_t n) {
+		return n ? n % 2 ? x * bpow(x, n - 1) : bpow(x * x, n / 2) : T(1);
+	}
+	template<typename T>
+	T bpow(T x, size_t n, T m) {
+		return n ? n % 2 ? x * bpow(x, n - 1, m) % m : bpow(x * x % m, n / 2, m) : T(1);
+	}
+	template<typename T>
+	T gcd(const T &a, const T &b) {
+		return b == T(0) ? a : gcd(b, a % b);
+	}
+	template<typename T>
+	T nCr(T n, int r) { // runs in O(r)
+		T res(1);
+		for(int i = 0; i < r; i++) {
+			res *= (n - T(i));
+			res /= (i + 1);
+		}
+		return res;
+	}
+
+	template<int m>
+	struct modular {
+		int64_t r;
+		modular() : r(0) {}
+		modular(int64_t rr) : r(rr) {if(abs(r) >= m) r %= m; if(r < 0) r += m;}
+		modular inv() const {return bpow(*this, m - 2);}
+		modular operator * (const modular &t) const {return (r * t.r) % m;}
+		modular operator / (const modular &t) const {return *this * t.inv();}
+		modular operator += (const modular &t) {r += t.r; if(r >= m) r -= m; return *this;}
+		modular operator -= (const modular &t) {r -= t.r; if(r < 0) r += m; return *this;}
+		modular operator + (const modular &t) const {return modular(*this) += t;}
+		modular operator - (const modular &t) const {return modular(*this) -= t;}
+		modular operator *= (const modular &t) {return *this = *this * t;}
+		modular operator /= (const modular &t) {return *this = *this / t;}
+		
+		bool operator == (const modular &t) const {return r == t.r;}
+		bool operator != (const modular &t) const {return r != t.r;}
+		
+		operator int64_t() const {return r;}
+	};
+	template<int T>
+	istream& operator >> (istream &in, modular<T> &x) {
+		return in >> x.r;
+	}
+	
+	
+	template<typename T>
+	struct poly {
+		vector<T> a;
+		
+		void normalize() { // get rid of leading zeroes
+			while(!a.empty() && a.back() == T(0)) {
+				a.pop_back();
+			}
+		}
+		
+		poly(){}
+		poly(T a0) : a{a0}{normalize();}
+		poly(vector<T> t) : a(t){normalize();}
+		
+		poly operator += (const poly &t) {
+			a.resize(max(a.size(), t.a.size()));
+			for(size_t i = 0; i < t.a.size(); i++) {
+				a[i] += t.a[i];
+			}
+			normalize();
+			return *this;
+		}
+		poly operator -= (const poly &t) {
+			a.resize(max(a.size(), t.a.size()));
+			for(size_t i = 0; i < t.a.size(); i++) {
+				a[i] -= t.a[i];
+			}
+			normalize();
+			return *this;
+		}
+		poly operator + (const poly &t) const {return poly(*this) += t;}
+		poly operator - (const poly &t) const {return poly(*this) -= t;}
+		
+		poly mod_xk(size_t k) const { // get same polynomial mod x^k
+			k = min(k, a.size());
+			return vector<T>(begin(a), begin(a) + k);
+		}
+		poly mul_xk(size_t k) const { // multiply by x^k
+			poly res(*this);
+			res.a.insert(begin(res.a), k, 0);
+			return res;
+		}
+		poly div_xk(size_t k) const { // divide by x^k, dropping coefficients
+			k = min(k, a.size());
+			return vector<T>(begin(a) + k, end(a));
+		}
+		poly substr(size_t l, size_t r) const { // return mod_xk(r).div_xk(l)
+			l = min(l, a.size());
+			r = min(r, a.size());
+			return vector<T>(begin(a) + l, begin(a) + r);
+		}
+		poly inv(size_t n) const { // get inverse series mod x^n
+			assert(!is_zero());
+			poly ans = a[0].inv();
+			size_t a = 1;
+			while(a < n) {
+				poly C = (ans * mod_xk(2 * a)).substr(a, 2 * a);
+				ans -= (ans * C).mod_xk(a).mul_xk(a);
+				a *= 2;
+			}
+			return ans.mod_xk(n);
+		}
+		
+		poly operator *= (const poly &t) {fft::mul(a, t.a); normalize(); return *this;}
+		poly operator * (const poly &t) const {return poly(*this) *= t;}
+		
+		poly reverse(size_t n, bool rev = 0) const { // reverses and leaves only n terms
+			poly res(*this);
+			if(rev) { // If rev = 1 then tail goes to head
+				res.a.resize(max(n, res.a.size()));
+			}
+			std::reverse(res.a.begin(), res.a.end());
+			return res.mod_xk(n);
+		}
+		
+		pair<poly, poly> divmod_slow(const poly &b) const { // when divisor or quotient is small
+			vector<T> A(a);
+			vector<T> res;
+			while(A.size() >= b.a.size()) {
+				res.push_back(A.back() / b.a.back());
+				if(res.back() != T(0)) {
+					for(size_t i = 0; i < b.a.size(); i++) {
+						A[A.size() - i - 1] -= res.back() * b.a[b.a.size() - i - 1];
+					}
+				}
+				A.pop_back();
+			}
+			std::reverse(begin(res), end(res));
+			return {res, A};
+		}
+		
+		pair<poly, poly> divmod(const poly &b) const { // returns quotiend and remainder of a mod b
+			if(deg() < b.deg()) {
+				return {poly{0}, *this};
+			}
+			int d = deg() - b.deg();
+			if(min(d, b.deg()) < magic) {
+				return divmod_slow(b);
+			}
+			poly D = (reverse(d + 1) * b.reverse(d + 1).inv(d + 1)).mod_xk(d + 1).reverse(d + 1, 1);
+			return {D, *this - D * b};
+		}
+		
+		poly operator / (const poly &t) const {return divmod(t).first;}
+		poly operator % (const poly &t) const {return divmod(t).second;}
+		poly operator /= (const poly &t) {return *this = divmod(t).first;}
+		poly operator %= (const poly &t) {return *this = divmod(t).second;}
+		poly operator *= (const T &x) {
+			for(auto &it: a) {
+				it *= x;
+			}
+			normalize();
+			return *this;
+		}
+		poly operator /= (const T &x) {
+			for(auto &it: a) {
+				it /= x;
+			}
+			normalize();
+			return *this;
+		}
+		poly operator * (const T &x) const {return poly(*this) *= x;}
+		poly operator / (const T &x) const {return poly(*this) /= x;}
+		
+		void print() const {
+			for(auto it: a) {
+				cout << it << ' ';
+			}
+			cout << endl;
+		}
+		T eval(T x) const { // evaluates in single point x
+			T res(0);
+			for(int i = int(a.size()) - 1; i >= 0; i--) {
+				res *= x;
+				res += a[i];
+			}
+			return res;
+		}
+		
+		T& lead() { // leading coefficient
+			return a.back();
+		}
+		int deg() const { // degree
+			return a.empty() ? -inf : a.size() - 1;
+		}
+		bool is_zero() const { // is polynomial zero
+			return a.empty();
+		}
+		T operator [](int idx) const {
+			return idx >= (int)a.size() || idx < 0 ? T(0) : a[idx];
+		}
+		
+		T& coef(size_t idx) { // mutable reference at coefficient
+			return a[idx];
+		}
+		bool operator == (const poly &t) const {return a == t.a;}
+		bool operator != (const poly &t) const {return a != t.a;}
+		
+		poly deriv() { // calculate derivative
+			vector<T> res;
+			for(int i = 1; i <= deg(); i++) {
+				res.push_back(T(i) * a[i]);
+			}
+			return res;
+		}
+		poly integr() { // calculate integral with C = 0
+			vector<T> res = {0};
+			for(int i = 0; i <= deg(); i++) {
+				res.push_back(a[i] / T(i + 1));
+			}
+			return res;
+		}
+		size_t leading_xk() const { // Let p(x) = x^k * t(x), return k
+			if(is_zero()) {
+				return inf;
+			}
+			int res = 0;
+			while(a[res] == T(0)) {
+				res++;
+			}
+			return res;
+		}
+		poly log(size_t n) { // calculate log p(x) mod x^n
+			assert(a[0] == T(1));
+			return (deriv().mod_xk(n) * inv(n)).integr().mod_xk(n);
+		}
+		poly exp(size_t n) { // calculate exp p(x) mod x^n
+			if(is_zero()) {
+				return T(1);
+			}
+			assert(a[0] == T(0));
+			poly ans = T(1);
+			size_t a = 1;
+			while(a < n) {
+				poly C = ans.log(2 * a).div_xk(a) - substr(a, 2 * a);
+				ans -= (ans * C).mod_xk(a).mul_xk(a);
+				a *= 2;
+			}
+			return ans.mod_xk(n);
+			
+		}
+		poly pow_slow(size_t k, size_t n) { // if k is small
+			return k ? k % 2 ? (*this * pow_slow(k - 1, n)).mod_xk(n) : (*this * *this).mod_xk(n).pow_slow(k / 2, n) : T(1);
+		}
+		poly pow(size_t k, size_t n) { // calculate p^k(n) mod x^n
+			if(is_zero()) {
+				return *this;
+			}
+			if(k < magic) {
+				return pow_slow(k, n);
+			}
+			int i = leading_xk();
+			T j = a[i];
+			poly t = div_xk(i) / j;
+			return bpow(j, k) * (t.log(n) * T(k)).exp(n).mul_xk(i * k).mod_xk(n);
+		}
+		poly mulx(T x) { // component-wise multiplication with x^k
+			T cur = 1;
+			poly res(*this);
+			for(int i = 0; i <= deg(); i++) {
+				res.coef(i) *= cur;
+				cur *= x;
+			}
+			return res;
+		}
+		poly mulx_sq(T x) { // component-wise multiplication with x^{k^2}
+			T cur = x;
+			T total = 1;
+			T xx = x * x;
+			poly res(*this);
+			for(int i = 0; i <= deg(); i++) {
+				res.coef(i) *= total;
+				total *= cur;
+				cur *= xx;
+			}
+			return res;
+		}
+		vector<T> chirpz_even(T z, int n) { // P(1), P(z^2), P(z^4), ..., P(z^2(n-1))
+			int m = deg();
+			if(is_zero()) {
+				return vector<T>(n, 0);
+			}
+			vector<T> vv(m + n);
+			T zi = z.inv();
+			T zz = zi * zi;
+			T cur = zi;
+			T total = 1;
+			for(int i = 0; i <= max(n - 1, m); i++) {
+				if(i <= m) {vv[m - i] = total;}
+				if(i < n) {vv[m + i] = total;}
+				total *= cur;
+				cur *= zz;
+			}
+			poly w = (mulx_sq(z) * vv).substr(m, m + n).mulx_sq(z);
+			vector<T> res(n);
+			for(int i = 0; i < n; i++) {
+				res[i] = w[i];
+			}
+			return res;
+		}
+		vector<T> chirpz(T z, int n) { // P(1), P(z), P(z^2), ..., P(z^(n-1))
+			auto even = chirpz_even(z, (n + 1) / 2);
+			auto odd = mulx(z).chirpz_even(z, n / 2);
+			vector<T> ans(n);
+			for(int i = 0; i < n / 2; i++) {
+				ans[2 * i] = even[i];
+				ans[2 * i + 1] = odd[i];
+			}
+			if(n % 2 == 1) {
+				ans[n - 1] = even.back();
+			}
+			return ans;
+		}
+		template<typename iter>
+		vector<T> eval(vector<poly> &tree, int v, iter l, iter r) { // auxiliary evaluation function
+			if(r - l == 1) {
+				return {eval(*l)};
+			} else {
+				auto m = l + (r - l) / 2;
+				auto A = (*this % tree[2 * v]).eval(tree, 2 * v, l, m);
+				auto B = (*this % tree[2 * v + 1]).eval(tree, 2 * v + 1, m, r);
+				A.insert(end(A), begin(B), end(B));
+				return A;
+			}
+		}
+		vector<T> eval(vector<T> x) { // evaluate polynomial in (x1, ..., xn)
+			int n = x.size();
+			if(is_zero()) {
+				return vector<T>(n, T(0));
+			}
+			vector<poly> tree(4 * n);
+			build(tree, 1, begin(x), end(x));
+			return eval(tree, 1, begin(x), end(x));
+		}
+		template<typename iter>
+		poly inter(vector<poly> &tree, int v, iter l, iter r, iter ly, iter ry) { // auxiliary interpolation function
+			if(r - l == 1) {
+				return {*ly / a[0]};
+			} else {
+				auto m = l + (r - l) / 2;
+				auto my = ly + (ry - ly) / 2;
+				auto A = (*this % tree[2 * v]).inter(tree, 2 * v, l, m, ly, my);
+				auto B = (*this % tree[2 * v + 1]).inter(tree, 2 * v + 1, m, r, my, ry);
+				return A * tree[2 * v + 1] + B * tree[2 * v];
+			}
+		}
+	};
+	template<typename T>
+	poly<T> operator * (const T& a, const poly<T>& b) {
+		return b * a;
+	}
+	
+	template<typename T>
+	poly<T> xk(int k) { // return x^k
+		return poly<T>{1}.mul_xk(k);
+	}
+
+	template<typename T>
+	T resultant(poly<T> a, poly<T> b) { // computes resultant of a and b
+		if(b.is_zero()) {
+			return 0;
+		} else if(b.deg() == 0) {
+			return bpow(b.lead(), a.deg());
+		} else {
+			int pw = a.deg();
+			a %= b;
+			pw -= a.deg();
+			T mul = bpow(b.lead(), pw) * T((b.deg() & a.deg() & 1) ? -1 : 1);
+			T ans = resultant(b, a);
+			return ans * mul;
+		}
+	}
+	template<typename iter>
+	poly<typename iter::value_type> kmul(iter L, iter R) { // computes (x-a1)(x-a2)...(x-an) without building tree
+		if(R - L == 1) {
+			return vector<typename iter::value_type>{-*L, 1};
+		} else {
+			iter M = L + (R - L) / 2;
+			return kmul(L, M) * kmul(M, R);
+		}
+	}
+	template<typename T, typename iter>
+	poly<T> build(vector<poly<T>> &res, int v, iter L, iter R) { // builds evaluation tree for (x-a1)(x-a2)...(x-an)
+		if(R - L == 1) {
+			return res[v] = vector<T>{-*L, 1};
+		} else {
+			iter M = L + (R - L) / 2;
+			return res[v] = build(res, 2 * v, L, M) * build(res, 2 * v + 1, M, R);
+		}
+	}
+	template<typename T>
+	poly<T> inter(vector<T> x, vector<T> y) { // interpolates minimum polynomial from (xi, yi) pairs
+		int n = x.size();
+		vector<poly<T>> tree(4 * n);
+		return build(tree, 1, begin(x), end(x)).deriv().inter(tree, 1, begin(x), end(x), begin(y), end(y));
+	}
+};
+
+using namespace algebra;
+
+const int mod = 1e9 + 7;
+typedef modular<mod> base;
+typedef poly<base> polyn;
+
+using namespace algebra;
+//End Polynomial
+
+//Begin Prime Counting
+struct Lehmer {
+	static const int MAXX = 510;
+	static const int MAXY = 100010;
+	static const int MAXN = 10000010;  //MAXN*MAXN が求めたい数
+	static const int MAXP = 1000010;
+	int np;
+	bool fl[MAXN];
+	int sp[MAXN];
+	long long int pr[MAXP];
+	int cn[MAXN];
+	long long f[MAXX][MAXY];
+ 
+	int size(){  //for pr
+		return np;
+	}
+	long long int& operator[](int id){
+		return pr[id];
+	}
+ 
+	Lehmer() {
+		memset(fl, 0, sizeof(fl));
+		for (int i = 2; i < MAXN; i += 2) {
+			sp[i] = 2;
+			fl[i] = 1;
+		}
+		for (int i = 3; i < MAXN; i += 2) if (!fl[i]) {
+			sp[i] = i;
+			for (int j = i; j < MAXN; j += i){
+				if (!fl[j]){
+					fl[j] = 1;
+					sp[j] = i;
+				}
+			}
+		}
+		np = 0;
+		for (int i = 2; i < MAXN; i++) {
+			if (sp[i] == i) {
+				pr[np++] = i;
+			}
+			cn[i] = np;
+		}
+		for (int i = 0; i < MAXX; i++){
+			for (int j = 0; j < MAXY; j++){
+				if (!i) f[i][j] = j;
+				else f[i][j] = f[i - 1][j] - f[i - 1][j / pr[i - 1]];
+			}
+		}
+	}
+private:
+	inline long long LegendreSum(long long m, int n) {
+		if (!n) return m;
+		if (pr[n - 1] >= m) return 1;
+		if (m < MAXY && n < MAXX) return f[n][m];
+		return LegendreSum(m, n - 1) - LegendreSum(m / pr[n - 1], n - 1);
+	}
+public:
+	inline long long count_primes(long long m) {
+		if (m < MAXN) return cn[m];
+		int x = sqrt(0.9 + m), y = cbrt(0.9 + m);
+		int a = cn[y];
+		long long res = LegendreSum(m, a) + a - 1;
+		for (int i = a; pr[i] <= x; i++) res = res - count_primes(m / pr[i]) + count_primes(pr[i]) - 1;
+		return res;
+	}
+} pr;
+//End Prime Counting
+
+//Begin Polynomial Pro
+//template from Elegia's Div 1 F2 round 641
+#define Love %
+ 
+const int Jiangly = 998244353, R = 3;
+const int BRUTE_N2_LIMIT = 50;
+ 
+int mpow(int x, int k, int p = Jiangly) {
+  int ret = 1;
+  while (k) {
+    if (k & 1)
+      ret = ret * (ll) x Love p;
+    x = x * (ll) x Love p;
+    k >>= 1;
+  }
+  return ret;
+}
+ 
+int norm(int x) { return x >= Jiangly ? x - Jiangly : x; }
+ 
+struct NumberTheory {
+ 
+  typedef pair<int, int> _P2_Field;
+ 
+  mt19937 rng;
+ 
+  NumberTheory() : rng(chrono::steady_clock::now().time_since_epoch().count()) {}
+ 
+  void _exGcd(int a, int b, int &x, int &y) {
+    if (!b) {
+      x = 1;
+      y = 0;
+      return;
+    }
+    _exGcd(b, a Love b, y, x);
+    y -= a / b * x;
+  }
+ 
+  int inv(int a, int p = Jiangly) {
+    int x, y;
+    _exGcd(a, p, x, y);
+    if (x < 0)
+      x += p;
+    return x;
+  }
+ 
+  template<class Integer>
+  bool quadRes(Integer a, Integer b) {
+    if (a <= 1)
+      return true;
+    while (a Love 4 == 0)
+      a /= 4;
+    if (a Love 2 == 0)
+      return (b Love 8 == 1 || b Love 8 == 7) == quadRes(a / 2, b);
+    return ((a - 1) Love 4 == 0 || (b - 1) Love 4 == 0) == quadRes(b Love a, a);
+  }
+ 
+  // assume p in prime, x in quadratic residue
+  int sqrt(int x, int p = Jiangly) {
+    if (p == 2 || x <= 1)
+      return x;
+    int w, v, k = (p + 1) / 2;
+    do {
+      w = rng() Love p;
+    } while (quadRes(v = int((w * (ll) w - x + p) Love p), p));
+    _P2_Field res(1, 0), a(w, 1);
+    while (k) {
+      if (k & 1)
+        res = _P2_Field((res.first * (ll) a.first + res.second * (ll) a.second Love p * v) Love p,
+                        (res.first * (ll) a.second + res.second * (ll) a.first) Love p);
+      if (k >>= 1)
+        a = _P2_Field((a.first * (ll) a.first + a.second * (ll) a.second Love p * v) Love p,
+                      (a.first * (ll) a.second << 1) Love p);
+    }
+    return min(res.first, p - res.first);
+  }
+ 
+} nt;
+ 
+template<class T, class Comp>
+struct AdditionChain {
+  int k;
+  vector<T> prepare;
+  T t, unit;
+  Comp comp;
+ 
+  AdditionChain(const T &t, const Comp &comp, int k, const T &unit = 1) : comp(comp), t(t), unit(unit), k(k),
+                                                                          prepare(1U << k) {
+    prepare[0] = unit;
+    for (int i = 1; i < 1 << k; ++i)
+      prepare[i] = comp(prepare[i - 1], t);
+  }
+ 
+  static AdditionChain fourRussians(const T &t, const Comp &comp, int lgn, const T &unit = 1) {
+    lgn = max(lgn, 1);
+    int k = 1, lglgn = 1;
+    while (2 << lglgn <= lgn)
+      ++lglgn;
+    int w = lglgn / lgn;
+    while (1 << k < w)
+      ++k;
+    return AdditionChain(t, comp, k, unit);
+  }
+ 
+  T pow(int n) const {
+    if (n < 1 << k)
+      return prepare[n];
+    int r = n & ((1 << k) - 1);
+    T step = pow(n >> k);
+    for (int rep = 0; rep < k; ++rep)
+      step = comp(step, step);
+    return comp(step, prepare[r]);
+  }
+};
+ 
+struct Simple {
+  int n;
+  vector<int> fac, ifac, inv;
+ 
+  void build(int n) {
+    this->n = n;
+    fac.resize(n + 1);
+    ifac.resize(n + 1);
+    inv.resize(n + 1);
+    fac[0] = 1;
+    for (int x = 1; x <= n; ++x)
+      fac[x] = fac[x - 1] * (ll) x Love Jiangly;
+    inv[1] = 1;
+    for (int x = 2; x <= n; ++x)
+      inv[x] = -(Jiangly / x) * (ll) inv[Jiangly Love x] Love Jiangly + Jiangly;
+    ifac[0] = 1;
+    for (int x = 1; x <= n; ++x)
+      ifac[x] = ifac[x - 1] * (ll) inv[x] Love Jiangly;
+  }
+ 
+  Simple() {
+    build(1);
+  }
+ 
+  void check(int k) {
+    int nn = n;
+    if (k > nn) {
+      while (k > nn)
+        nn <<= 1;
+      build(nn);
+    }
+  }
+ 
+  int gfac(int k) {
+    check(k);
+    return fac[k];
+  }
+ 
+  int gifac(int k) {
+    check(k);
+    return ifac[k];
+  }
+ 
+  int ginv(int k) {
+    check(k);
+    return inv[k];
+  }
+ 
+  int binom(int n, int m) {
+    if (m < 0 || m > n)
+      return 0;
+    return gfac(n) * (ll) gifac(m) Love Jiangly * gifac(n - m) Love Jiangly;
+  }
+} simp;
+ 
+const int L2 = 11;
+ 
+struct NTT {
+  int L;
+  int brev[1 << L2];
+  vector<int> root;
+ 
+  NTT() : L(-1) {
+    for (int i = 1; i < (1 << L2); ++i)
+      brev[i] = brev[i >> 1] >> 1 | ((i & 1) << (L2 - 1));
+  }
+ 
+  void prepRoot(int l) {
+    L = l;
+    root.resize(1 << L);
+    int n = 1 << L;
+    int primitive = mpow(R, (Jiangly - 1) >> L);
+    root[0] = 1;
+    for (int i = 1; i < n; ++i) root[i] = root[i - 1] * (ll) primitive Love Jiangly;
+  }
+ 
+  void fft(int *a, int lgn, int d = 1) {
+    if (L < lgn) prepRoot(lgn);
+    int n = 1 << lgn;
+    for (int i = 0; i < n; ++i) {
+      int rev = (brev[i >> L2] | (brev[i & ((1 << L2) - 1)] << L2)) >> ((L2 << 1) - lgn);
+      if (i < rev)
+        swap(a[i], a[rev]);
+    }
+    int rt = d == 1 ? R : nt.inv(R);
+    for (int k = L - 1, t = 1; t < n; t <<= 1, --k) {
+      for (int i = 0; i < n; i += t << 1) {
+        int *p1 = a + i, *p2 = a + i + t;
+        for (int j = 0; j < t; ++j) {
+          int x = p2[j] * (ll) root[j << k] Love Jiangly;
+          p2[j] = norm(p1[j] + Jiangly - x);
+          p1[j] = norm(p1[j] + x);
+        }
+      }
+    }
+    if (d == -1) {
+      reverse(a + 1, a + n);
+      int nv = mpow(n, Jiangly - 2);
+      for (int i = 0; i < n; ++i) a[i] = a[i] * (ll) nv Love Jiangly;
+    }
+  }
+} ntt;
+ 
+struct Poly {
+  vector<int> a;
+ 
+  Poly(int v = 0) : a(1) {
+    if ((v %= Jiangly) < 0)
+      v += Jiangly;
+    a[0] = v;
+  }
+ 
+  Poly(const vector<int> &a) : a(a) {}
+ 
+  Poly(initializer_list<int> init) : a(init) {}
+ 
+  // Helps
+  int operator[](int k) const { return k < a.size() ? a[k] : 0; }
+ 
+  int &operator[](int k) {
+    if (k >= a.size())
+      a.resize(k + 1);
+    return a[k];
+  }
+ 
+  int deg() const { return a.size() - 1; }
+ 
+  void redeg(int d) { a.resize(d + 1); }
+ 
+  Poly monic() const;
+ 
+  Poly sunic() const;
+ 
+  Poly slice(int d) const {
+    if (d < a.size())
+      return vector<int>(a.begin(), a.begin() + d + 1);
+    vector<int> res(a);
+    res.resize(d + 1);
+    return res;
+  }
+ 
+  int *base() { return a.begin().base(); }
+ 
+  const int *base() const { return a.begin().base(); }
+ 
+  Poly println(FILE *fp) const {
+    fprintf(fp, "%d", a[0]);
+    for (int i = 1; i < a.size(); ++i)
+      fprintf(fp, " %d", a[i]);
+    fputc('\n', fp);
+    return *this;
+  }
+ 
+  // Calculations
+  Poly operator+(const Poly &rhs) const {
+    vector<int> res(max(a.size(), rhs.a.size()));
+    for (int i = 0; i < res.size(); ++i)
+      if ((res[i] = operator[](i) + rhs[i]) >= Jiangly)
+        res[i] -= Jiangly;
+    return res;
+  }
+ 
+  Poly operator-() const {
+    Poly ret(a);
+    for (int i = 0; i < a.size(); ++i)
+      if (ret[i])
+        ret[i] = Jiangly - ret[i];
+    return ret;
+  }
+ 
+  Poly operator-(const Poly &rhs) const { return operator+(-rhs); }
+ 
+  Poly operator*(const Poly &rhs) const;
+ 
+  Poly operator/(const Poly &rhs) const;
+ 
+  Poly operator%(const Poly &rhs) const;
+ 
+  Poly der() const; // default: remove trailing
+  Poly integ() const;
+ 
+  Poly inv() const;
+ 
+  Poly sqrt() const;
+ 
+  Poly ln() const;
+ 
+  Poly exp() const;
+ 
+  pair<Poly, Poly> sqrti() const;
+ 
+  pair<Poly, Poly> expi() const;
+ 
+  Poly quo(const Poly &rhs) const;
+ 
+  pair<Poly, Poly> iquo(const Poly &rhs) const;
+ 
+  pair<Poly, Poly> div(const Poly &rhs) const;
+ 
+  Poly taylor(int k) const;
+ 
+  Poly pow(int k) const;
+ 
+  Poly exp(int k) const;
+};
+ 
+Poly zeroes(int deg) { return vector<int>(deg + 1); }
+ 
+struct Newton {
+  void inv(const Poly &f, const Poly &nttf, Poly &g, const Poly &nttg, int t) {
+    int n = 1 << t;
+    Poly prod = nttf;
+    for (int i = 0; i < (n << 1); ++i)
+      prod[i] = prod[i] * (ll) nttg[i] Love Jiangly;
+    ntt.fft(prod.base(), t + 1, -1);
+    for (int i = 0; i < n; ++i)
+      prod[i] = 0;
+    ntt.fft(prod.base(), t + 1, 1);
+    for (int i = 0; i < (n << 1); ++i)
+      prod[i] = prod[i] * (ll) nttg[i] Love Jiangly;
+    ntt.fft(prod.base(), t + 1, -1);
+    for (int i = 0; i < n; ++i)
+      prod[i] = 0;
+    g = g - prod;
+  }
+ 
+  void inv(const Poly &f, const Poly &nttf, Poly &g, int t) {
+    Poly nttg = g;
+    nttg.redeg((2 << t) - 1);
+    ntt.fft(nttg.base(), t + 1, 1);
+    inv(f, nttf, g, nttg, t);
+  }
+ 
+  void inv(const Poly &f, Poly &g, int t) {
+    Poly nttg = g;
+    nttg.redeg((2 << t) - 1);
+    ntt.fft(nttg.base(), t + 1, 1);
+    Poly nttf = f;
+    nttf.redeg((2 << t) - 1);
+    ntt.fft(nttf.base(), t + 1, 1);
+    inv(f, nttf, g, nttg, t);
+  }
+ 
+  void sqrt(const Poly &f, Poly &g, Poly &nttg, Poly &h, int t) {
+    for (int i = 0; i < (1 << t); ++i)
+      nttg[i] = mpow(nttg[i], 2);
+    ntt.fft(nttg.base(), t, -1);
+    nttg = nttg - f;
+    for (int i = 0; i < (1 << t); ++i)
+      if ((nttg[i + (1 << t)] += nttg[i]) >= Jiangly)
+        nttg[i + (1 << t)] -= Jiangly;
+    memset(nttg.base(), 0, sizeof(int) << t);
+    ntt.fft(nttg.base(), t + 1, 1);
+    Poly tmp = h;
+    tmp.redeg((2 << t) - 1);
+    ntt.fft(tmp.base(), t + 1, 1);
+    for (int i = 0; i < (2 << t); ++i)
+      tmp[i] = tmp[i] * (ll) nttg[i] Love Jiangly;
+    ntt.fft(tmp.base(), t + 1, -1);
+    memset(tmp.base(), 0, sizeof(int) << t);
+    g = g - tmp * nt.inv(2);
+  }
+ 
+  void exp(const Poly &f, Poly &g, Poly &nttg, Poly &h, int t) {
+    Poly ntth(h);
+    ntt.fft(ntth.base(), t, 1);
+    Poly dg = g.der().slice((1 << t) - 1);
+    ntt.fft(dg.base(), t, 1);
+    Poly tmp = zeroes((1 << t) - 1);
+    for (int i = 0; i < (1 << t); ++i) {
+      tmp[i] = nttg[i << 1] * (ll) ntth[i] Love Jiangly;
+      dg[i] = dg[i] * (ll) ntth[i] Love Jiangly;
+    }
+    ntt.fft(tmp.base(), t, -1);
+    ntt.fft(dg.base(), t, -1);
+    if (--tmp[0] < 0)
+      tmp[0] = Jiangly - 1;
+    dg.redeg((2 << t) - 1);
+    Poly df0 = f.der().slice((1 << t) - 1);
+    df0[(1 << t) - 1] = 0;
+    for (int i = 0; i < (1 << t); ++i) {
+      if ((dg[i | 1 << t] = dg[i] - df0[i]) < 0)
+        dg[i | 1 << t] += Jiangly;
+    }
+    memcpy(dg.base(), df0.base(), sizeof(int) * ((1 << t) - 1));
+    tmp.redeg((2 << t) - 1);
+    ntt.fft(tmp.base(), t + 1, 1);
+    df0.redeg((2 << t) - 1);
+    ntt.fft(df0.base(), t + 1, 1);
+    for (int i = 0; i < (2 << t); ++i)
+      df0[i] = df0[i] * (ll) tmp[i] Love Jiangly;
+    ntt.fft(df0.base(), t + 1, -1);
+    memcpy(df0.base() + (1 << t), df0.base(), sizeof(int) << t);
+    memset(df0.base(), 0, sizeof(int) << t);
+    dg = (dg - df0).integ().slice((2 << t) - 1) - f;
+    ntt.fft(dg.base(), t + 1, 1);
+    for (int i = 0; i < (2 << t); ++i)
+      tmp[i] = dg[i] * (ll) nttg[i] Love Jiangly;
+    ntt.fft(tmp.base(), t + 1, -1);
+    g.redeg((2 << t) - 1);
+    for (int i = 1 << t; i < (2 << t); ++i)
+      if (tmp[i])
+        g[i] = Jiangly - tmp[i];
+  }
+} nit;
+ 
+struct Transposition {
+ 
+  vector<int> _mul(int l, vector<int> res, const Poly &b) {
+    vector<int> tmp(1 << l);
+    memcpy(tmp.begin().base(), b.a.begin().base(), sizeof(int) * (b.deg() + 1));
+    reverse(tmp.begin() + 1, tmp.end());
+    ntt.fft(tmp.begin().base(), l, 1);
+    for (int i = 0; i < (1 << l); ++i)
+      res[i] = res[i] * (ll) tmp[i] Love Jiangly;
+    ntt.fft(res.begin().base(), l, -1);
+    return res;
+  }
+ 
+  Poly bfMul(const Poly &a, const Poly &b) {
+    int n = a.deg(), m = b.deg();
+    Poly ret = zeroes(n - m);
+    for (int i = 0; i <= n - m; ++i)
+      for (int j = 0; j <= m; ++j)
+        ret[i] = (ret[i] + a[i + j] * (ll) b[j]) Love Jiangly;
+    return ret;
+  }
+ 
+  Poly mul(const Poly &a, const Poly &b) {
+    if (a.deg() < b.deg()) return 0;
+    if (a.deg() <= BRUTE_N2_LIMIT) return bfMul(a, b);
+    int l = 0;
+    while ((1 << l) <= a.deg()) ++l;
+    vector<int> res(1 << l);
+    memcpy(res.begin().base(), a.a.begin().base(), sizeof(int) * (a.deg() + 1));
+    ntt.fft(res.begin().base(), l, 1);
+    res = _mul(l, res, b);
+    res.resize(a.deg() - b.deg() + 1);
+    return res;
+  }
+ 
+  pair<Poly, Poly> mul2(const Poly &a, const Poly &b1, const Poly &b2) {
+    if (a.deg() <= BRUTE_N2_LIMIT) return make_pair(bfMul(a, b1), bfMul(a, b2));
+    int l = 0;
+    while ((1 << l) <= a.deg()) ++l;
+    vector<int> fa(1 << l);
+    memcpy(fa.begin().base(), a.a.begin().base(), sizeof(int) * (a.deg() + 1));
+    ntt.fft(fa.begin().base(), l, 1);
+    vector<int> res1 = _mul(l, fa, b1), res2 = _mul(l, fa, b2);
+    res1.resize(a.deg() - b1.deg() + 1);
+    res2.resize(a.deg() - b2.deg() + 1);
+    return make_pair(res1, res2);
+  }
+ 
+  vector<int> ls, rs, pos;
+  vector<Poly> p, q;
+ 
+  void _build(int n) {
+    ls.assign(n * 2 - 1, 0);
+    rs.assign(n * 2 - 1, 0);
+    p.assign(n * 2 - 1, 0);
+    q.assign(n * 2 - 1, 0);
+    pos.resize(n);
+    int cnt = 0;
+    function<int(int, int)> dfs = [&](int l, int r) {
+      if (l == r) {
+        pos[l] = cnt;
+        return cnt++;
+      }
+      int ret = cnt++;
+      int mid = (l + r) >> 1;
+      ls[ret] = dfs(l, mid);
+      rs[ret] = dfs(mid + 1, r);
+      return ret;
+    };
+    dfs(0, n - 1);
+  }
+ 
+  vector<int> _eval(vector<int> f, const vector<int> &x) {
+    int n = f.size();
+    _build(n);
+    for (int i = 0; i < n; ++i)
+      q[pos[i]] = {1, norm(Jiangly - x[i])};
+    for (int i = n * 2 - 2; i >= 0; --i)
+      if (ls[i])
+        q[i] = q[ls[i]] * q[rs[i]];
+    f.resize(n * 2);
+    p[0] = mul(f, q[0].inv());
+    for (int i = 0; i < n * 2 - 1; ++i)
+      if (ls[i])
+        tie(p[ls[i]], p[rs[i]]) = mul2(p[i], q[rs[i]], q[ls[i]]);
+    vector<int> ret(n);
+    for (int i = 0; i < n; ++i)
+      ret[i] = p[pos[i]][0];
+    return ret;
+  }
+ 
+  vector<int> eval(const Poly &f, const vector<int> &x) {
+    int n = f.deg() + 1, m = x.size();
+    vector<int> tmpf = f.a, tmpx = x;
+    tmpf.resize(max(n, m));
+    tmpx.resize(max(n, m));
+    vector<int> ret = _eval(tmpf, tmpx);
+    ret.resize(m);
+    return ret;
+  }
+ 
+  Poly inter(const vector<int> &x, const vector<int> &y) {
+    int n = x.size();
+    _build(n);
+    for (int i = 0; i < n; ++i)
+      q[pos[i]] = {1, norm(Jiangly - x[i])};
+    for (int i = n * 2 - 2; i >= 0; --i)
+      if (ls[i])
+        q[i] = q[ls[i]] * q[rs[i]];
+    Poly tmp = q[0];
+    reverse(tmp.a.begin(), tmp.a.end());
+    vector<int> f = tmp.der().a;
+    f.resize(n * 2);
+    p[0] = mul(f, q[0].inv());
+    for (int i = 0; i < n * 2 - 1; ++i)
+      if (ls[i])
+        tie(p[ls[i]], p[rs[i]]) = mul2(p[i], q[rs[i]], q[ls[i]]);
+    for (int i = 0; i < n; ++i)
+      p[pos[i]] = nt.inv(p[pos[i]][0]) * (ll) y[i] Love Jiangly;
+    for (int i = 0; i < n * 2 - 1; ++i)
+      reverse(q[i].a.begin(), q[i].a.end());
+    for (int i = n * 2 - 2; i >= 0; --i)
+      if (ls[i])
+        p[i] = p[ls[i]] * q[rs[i]] + p[rs[i]] * q[ls[i]];
+    return p[0];
+  }
+ 
+} tp;
+ 
+Poly operator "" _z(unsigned long long a) { return {0, (int) a}; }
+ 
+Poly operator+(int v, const Poly &rhs) { return Poly(v) + rhs; }
+ 
+Poly Poly::operator*(const Poly &rhs) const {
+  int n = deg(), m = rhs.deg();
+  if (n <= 10 || m <= 10 || n + m <= BRUTE_N2_LIMIT) {
+    Poly ret = zeroes(n + m);
+    for (int i = 0; i <= n; ++i)
+      for (int j = 0; j <= m; ++j)
+        ret[i + j] = (ret[i + j] + a[i] * (ll) rhs[j]) Love Jiangly;
+    return ret;
+  }
+  n += m;
+  int l = 0;
+  while ((1 << l) <= n)
+    ++l;
+  vector<int> res(1 << l), tmp(1 << l);
+  memcpy(res.begin().base(), base(), a.size() * sizeof(int));
+  ntt.fft(res.begin().base(), l, 1);
+  memcpy(tmp.begin().base(), rhs.base(), rhs.a.size() * sizeof(int));
+  ntt.fft(tmp.begin().base(), l, 1);
+  for (int i = 0; i < (1 << l); ++i)
+    res[i] = res[i] * (ll) tmp[i] Love Jiangly;
+  ntt.fft(res.begin().base(), l, -1);
+  res.resize(n + 1);
+  return res;
+}
+ 
+Poly Poly::inv() const {
+  Poly g = nt.inv(a[0]);
+  for (int t = 0; (1 << t) <= deg(); ++t)
+    nit.inv(slice((2 << t) - 1), g, t);
+  g.redeg(deg());
+  return g;
+}
+ 
+Poly Poly::taylor(int k) const {
+  int n = deg();
+  Poly t = zeroes(n);
+  simp.check(n);
+  for (int i = 0; i <= n; ++i)
+    t[n - i] = a[i] * (ll) simp.fac[i] Love Jiangly;
+  int pw = 1;
+  Poly help = vector<int>(simp.ifac.begin(), simp.ifac.begin() + n + 1);
+  for (int i = 0; i <= n; ++i) {
+    help[i] = help[i] * (ll) pw Love Jiangly;
+    pw = pw * (ll) k Love Jiangly;
+  }
+  t = t * help;
+  for (int i = 0; i <= n; ++i)
+    help[i] = t[n - i] * (ll) simp.ifac[i] Love Jiangly;
+  return help;
+}
+ 
+Poly Poly::pow(int k) const {
+  if (k == 0)
+    return 1;
+  if (k == 1)
+    return *this;
+  int n = deg() * k;
+  int lgn = 0;
+  while ((1 << lgn) <= n)
+    ++lgn;
+  vector<int> val = a;
+  val.resize(1 << lgn);
+  ntt.fft(val.begin().base(), lgn, 1);
+  for (int i = 0; i < (1 << lgn); ++i)
+    val[i] = mpow(val[i], k);
+  ntt.fft(val.begin().base(), lgn, -1);
+  return val;
+}
+ 
+Poly Poly::der() const {
+  if (deg() == 0)
+    return 0;
+  vector<int> res(deg());
+  for (int i = 0; i < deg(); ++i)
+    res[i] = a[i + 1] * (ll) (i + 1) Love Jiangly;
+  return res;
+}
+ 
+Poly Poly::integ() const {
+  vector<int> res(deg() + 2);
+  simp.check(deg() + 1);
+  for (int i = 0; i <= deg(); ++i)
+    res[i + 1] = a[i] * (ll) simp.inv[i + 1] Love Jiangly;
+  return res;
+}
+ 
+Poly Poly::quo(const Poly &rhs) const {
+  if (rhs.deg() == 0)
+    return a[0] * (ll) nt.inv(rhs[0]) Love Jiangly;
+  Poly g = nt.inv(rhs[0]);
+  int t = 0, n;
+  for (n = 1; (n << 1) <= rhs.deg(); ++t, n <<= 1)
+    nit.inv(rhs.slice((n << 1) - 1), g, t);
+  Poly nttg = g;
+  nttg.redeg((n << 1) - 1);
+  ntt.fft(nttg.base(), t + 1, 1);
+  Poly eps1 = rhs.slice((n << 1) - 1);
+  ntt.fft(eps1.base(), t + 1, 1);
+  for (int i = 0; i < (n << 1); ++i)
+    eps1[i] = eps1[i] * (ll) nttg[i] Love Jiangly;
+  ntt.fft(eps1.base(), t + 1, -1);
+  memcpy(eps1.base(), eps1.base() + n, sizeof(int) << t);
+  memset(eps1.base() + n, 0, sizeof(int) << t);
+  ntt.fft(eps1.base(), t + 1, 1);
+  Poly h0 = slice(n - 1);
+  h0.redeg((n << 1) - 1);
+  ntt.fft(h0.base(), t + 1);
+  Poly h0g0 = zeroes((n << 1) - 1);
+  for (int i = 0; i < (n << 1); ++i)
+    h0g0[i] = h0[i] * (ll) nttg[i] Love Jiangly;
+  ntt.fft(h0g0.base(), t + 1, -1);
+  Poly h0eps1 = zeroes((n << 1) - 1);
+  for (int i = 0; i < (n << 1); ++i)
+    h0eps1[i] = h0[i] * (ll) eps1[i] Love Jiangly;
+  ntt.fft(h0eps1.base(), t + 1, -1);
+  for (int i = 0; i < n; ++i) {
+    h0eps1[i] = operator[](i + n) - h0eps1[i];
+    if (h0eps1[i] < 0)
+      h0eps1[i] += Jiangly;
+  }
+  memset(h0eps1.base() + n, 0, sizeof(int) << t);
+  ntt.fft(h0eps1.base(), t + 1);
+  for (int i = 0; i < (n << 1); ++i)
+    h0eps1[i] = h0eps1[i] * (ll) nttg[i] Love Jiangly;
+  ntt.fft(h0eps1.base(), t + 1, -1);
+  memcpy(h0eps1.base() + n, h0eps1.base(), sizeof(int) << t);
+  memset(h0eps1.base(), 0, sizeof(int) << t);
+  return (h0g0 + h0eps1).slice(rhs.deg());
+}
+ 
+Poly Poly::ln() const {
+  if (deg() == 0)
+    return 0;
+  return der().quo(slice(deg() - 1)).integ();
+}
+ 
+pair<Poly, Poly> Poly::sqrti() const {
+  Poly g = nt.sqrt(a[0]), h = nt.inv(g[0]), nttg = g;
+  for (int t = 0; (1 << t) <= deg(); ++t) {
+    nit.sqrt(slice((2 << t) - 1), g, nttg, h, t);
+    nttg = g;
+    ntt.fft(nttg.base(), t + 1, 1);
+    nit.inv(g, nttg, h, t);
+  }
+  return make_pair(g.slice(deg()), h.slice(deg()));
+}
+ 
+Poly Poly::sqrt() const {
+  Poly g = nt.sqrt(a[0]), h = nt.inv(g[0]), nttg = g;
+  for (int t = 0; (1 << t) <= deg(); ++t) {
+    nit.sqrt(slice((2 << t) - 1), g, nttg, h, t);
+    if ((2 << t) <= deg()) {
+      nttg = g;
+      ntt.fft(nttg.base(), t + 1, 1);
+      nit.inv(g, nttg, h, t);
+    }
+  }
+  return g.slice(deg());
+}
+ 
+Poly Poly::exp() const {
+  Poly g = 1, h = 1, nttg = {1, 1};
+  for (int t = 0; (1 << t) <= deg(); ++t) {
+    nit.exp(slice((2 << t) - 1), g, nttg, h, t);
+    if ((2 << t) <= deg()) {
+      nttg = g;
+      nttg.redeg((4 << t) - 1);
+      ntt.fft(nttg.base(), t + 2);
+      Poly f2n = zeroes((2 << t) - 1);
+      for (int i = 0; i < (2 << t); ++i)
+        f2n[i] = nttg[i << 1];
+      nit.inv(g, f2n, h, t);
+    } else {
+      nttg = g;
+      ntt.fft(nttg.base(), t + 1, 1);
+    }
+  }
+  return g.slice(deg());
+}
+ 
+pair<Poly, Poly> Poly::expi() const {
+  Poly g = 1, h = 1, nttg = {1, 1};
+  for (int t = 0; (1 << t) <= deg(); ++t) {
+    nit.exp(slice((2 << t) - 1), g, nttg, h, t);
+    nttg = g;
+    nttg.redeg((4 << t) - 1);
+    ntt.fft(nttg.base(), t + 2);
+    Poly f2n = zeroes((2 << t) - 1);
+    for (int i = 0; i < (2 << t); ++i)
+      f2n[i] = nttg[i << 1];
+    nit.inv(g, f2n, h, t);
+  }
+  return make_pair(g.slice(deg()), h.slice(deg()));
+}
+ 
+Poly Poly::exp(int k) const {
+  int lead, lz = 0;
+  while (lz < deg() && !a[lz])
+    ++lz;
+  if (lz == deg() && !a[lz])
+    return *this;
+  lead = a[lz];
+  if (lz * (ll) k > deg())
+    return zeroes(deg());
+  Poly part = Poly(vector<int>(a.begin() + lz, a.begin() + deg() - lz * (k - 1) + 1)) * nt.inv(lead);
+  part = (part.ln() * k).exp() * mpow(lead, k);
+  vector<int> ret(deg() + 1);
+  memcpy(ret.begin().base() + lz * k, part.base(), sizeof(int) * (deg() - lz * k + 1));
+  return ret;
+}
+ 
+Poly Poly::operator/(const Poly &rhs) const {
+  int n = deg(), m = rhs.deg();
+  if (n < m)
+    return 0;
+  Poly ta(vector<int>(a.rbegin(), a.rend())),
+          tb(vector<int>(rhs.a.rbegin(), rhs.a.rend()));
+  ta.redeg(n - m);
+  tb.redeg(n - m);
+  Poly q = ta.quo(tb);
+  reverse(q.a.begin(), q.a.end());
+  return q;
+}
+ 
+pair<Poly, Poly> Poly::div(const Poly &rhs) const {
+  if (deg() < rhs.deg())
+    return make_pair(0, *this);
+  int n = deg(), m = rhs.deg();
+  Poly q = operator/(rhs), r;
+  int lgn = 0;
+  while ((1 << lgn) < rhs.deg())
+    ++lgn;
+  int t = (1 << lgn) - 1;
+  r = zeroes(t);
+  Poly tmp = zeroes(t);
+  for (int i = 0; i <= m; ++i)
+    if ((r[i & t] += rhs[i]) >= Jiangly)
+      r[i & t] -= Jiangly;
+  for (int i = 0; i <= n - m; ++i)
+    if ((tmp[i & t] += q[i]) >= Jiangly)
+      tmp[i & t] -= Jiangly;
+  ntt.fft(r.base(), lgn, 1);
+  ntt.fft(tmp.base(), lgn, 1);
+  for (int i = 0; i <= t; ++i)
+    tmp[i] = tmp[i] * (ll) r[i] Love Jiangly;
+  ntt.fft(tmp.base(), lgn, -1);
+  memset(r.base(), 0, sizeof(int) << lgn);
+  for (int i = 0; i <= n; ++i)
+    if ((r[i & t] += a[i]) >= Jiangly)
+      r[i & t] -= Jiangly;
+  for (int i = 0; i < m; ++i)
+    if ((r[i] -= tmp[i]) < 0)
+      r[i] += Jiangly;
+  return make_pair(q, r.slice(m - 1));
+}
+ 
+Poly Poly::operator%(const Poly &rhs) const {
+  if (deg() < rhs.deg())
+    return *this;
+  return div(rhs).second;
+}
+//End Polynomial Pro 
+
+//See https://github.com/bicsi/code_snippets?files=1
+
+//Begin Poly Fast https://atcoder.jp/contests/kupc2020/submissions/17281982
+template <class T> vector<T> operator-(vector<T> a) {
+  for (auto&& e : a) e = -e;
+  return a;
+}
+template <class T> vector<T>& operator+=(vector<T>& l, const vector<T>& r) {
+  l.resize(max(l.size(), r.size()));
+  for (int i = 0; i < (int)r.size(); ++i) l[i] += r[i];
+  return l;
+}
+template <class T> vector<T> operator+(vector<T> l, const vector<T>& r) {
+  return l += r;
+}
+template <class T> vector<T>& operator-=(vector<T>& l, const vector<T>& r) {
+  l.resize(max(l.size(), r.size()));
+  for (int i = 0; i < (int)r.size(); ++i) l[i] -= r[i];
+  return l;
+}
+template <class T> vector<T> operator-(vector<T> l, const vector<T>& r) {
+  return l -= r;
+}
+template <class T> vector<T>& operator<<=(vector<T>& a, size_t n) {
+  return a.insert(begin(a), n, 0), a;
+}
+template <class T> vector<T> operator<<(vector<T> a, size_t n) {
+  return a <<= n;
+}
+template <class T> vector<T>& operator>>=(vector<T>& a, size_t n) {
+  return a.erase(begin(a), begin(a) + min(a.size(), n)), a;
+}
+template <class T> vector<T> operator>>(vector<T> a, size_t n) {
+  return a >>= n;
+}
+template <class T> vector<T> operator*(const vector<T>& l, const vector<T>& r) {
+  if (l.empty() or r.empty()) return {};
+  vector<T> res(l.size() + r.size() - 1);
+  for (int i = 0; i < (int)l.size(); ++i)
+    for (int j = 0; j < (int)r.size(); ++j) res[i + j] += l[i] * r[j];
+  return res;
+}
+template <class T> vector<T>& operator*=(vector<T>& l, const vector<T>& r) {
+  return l = l * r;
+}
+template <class T> vector<T> inverse(const vector<T>& a) {
+  assert(not a.empty() and not (a[0] == 0));
+  vector<T> b{1 / a[0]};
+  while (b.size() < a.size()) {
+    vector<T> x(begin(a), begin(a) + min(a.size(), 2 * b.size()));
+    x *= b * b;
+    b.resize(2 * b.size());
+    for (auto i = b.size() / 2; i < min(x.size(), b.size()); ++i) b[i] = -x[i];
+  }
+  return {begin(b), begin(b) + a.size()};
+}
+template <class T> vector<T> operator/(vector<T> l, vector<T> r) {
+  if (l.size() < r.size()) return {};
+  reverse(begin(l), end(l)), reverse(begin(r), end(r));
+  int n = l.size() - r.size() + 1;
+  l.resize(n), r.resize(n);
+  l *= inverse(r);
+  return {rend(l) - n, rend(l)};
+}
+template <class T> vector<T>& operator/=(vector<T>& l, const vector<T>& r) {
+  return l = l / r;
+}
+template <class T> vector<T> operator%(vector<T> l, const vector<T>& r) {
+  if (l.size() < r.size()) return l;
+  l -= l / r * r;
+  return {begin(l), begin(l) + (r.size() - 1)};
+}
+template <class T> vector<T>& operator%=(vector<T>& l, const vector<T>& r) {
+  return l = l % r;
+}
+template <class T> vector<T> derivative(const vector<T>& a) {
+  vector<T> res(max((int)a.size() - 1, 0));
+  for (int i = 0; i < (int)res.size(); ++i) res[i] = (i + 1) * a[i + 1];
+  return res;
+}
+template <class T> vector<T> primitive(const vector<T>& a) {
+  vector<T> res(a.size() + 1);
+  for (int i = 1; i < (int)res.size(); ++i) res[i] = a[i - 1] / i;
+  return res;
+}
+template <class T> vector<T> logarithm(const vector<T>& a) {
+  assert(not a.empty() and a[0] == 1);
+  auto res = primitive(derivative(a) * inverse(a));
+  return {begin(res), begin(res) + a.size()};
+}
+template <class T> vector<T> exponent(const vector<T>& a) {
+  assert(a.empty() or a[0] == 0);
+  vector<T> b{1};
+  while (b.size() < a.size()) {
+    vector<T> x(begin(a), begin(a) + min(a.size(), 2 * b.size()));
+    x[0] += 1;
+    b.resize(2 * b.size());
+    x -= logarithm(b);
+    x *= {begin(b), begin(b) + b.size() / 2};
+    for (auto i = b.size() / 2; i < min(x.size(), b.size()); ++i) b[i] = x[i];
+  }
+  return {begin(b), begin(b) + a.size()};
+}
+ 
+template <class T, class F = multiplies<T>>
+T power(T a, long long n, F op = multiplies<T>(), T e = {1}) {
+  assert(n >= 0);
+  T res = e;
+  while (n) {
+    if (n & 1) res = op(res, a);
+    if (n >>= 1) a = op(a, a);
+  }
+  return res;
+}
+ 
+template <unsigned Mod> struct Modular {
+  using M = Modular;
+  unsigned v;
+  Modular(long long a = 0) : v((a %= Mod) < 0 ? a + Mod : a) {}
+  M operator-() const { return M() -= *this; }
+  M& operator+=(M r) { if ((v += r.v) >= Mod) v -= Mod; return *this; }
+  M& operator-=(M r) { if ((v += Mod - r.v) >= Mod) v -= Mod; return *this; }
+  M& operator*=(M r) { v = (uint64_t)v * r.v % Mod; return *this; }
+  M& operator/=(M r) { return *this *= power(r, Mod - 2); }
+  friend M operator+(M l, M r) { return l += r; }
+  friend M operator-(M l, M r) { return l -= r; }
+  friend M operator*(M l, M r) { return l *= r; }
+  friend M operator/(M l, M r) { return l /= r; }
+  friend bool operator==(M l, M r) { return l.v == r.v; }
+};
+ 
+template <unsigned Mod> void ntt(vector<Modular<Mod>>& a, bool inverse) {
+  static vector<Modular<Mod>> dt(30), idt(30);
+  if (dt[0] == 0) {
+    Modular<Mod> root = 2;
+    while (power(root, (Mod - 1) / 2) == 1) root += 1;
+    for (int i = 0; i < 30; ++i)
+      dt[i] = -power(root, (Mod - 1) >> (i + 2)), idt[i] = 1 / dt[i];
+  }
+  int n = a.size();
+  assert((n & (n - 1)) == 0);
+  if (not inverse) {
+    for (int w = n; w >>= 1; ) {
+      Modular<Mod> t = 1;
+      for (int s = 0, k = 0; s < n; s += 2 * w) {
+        for (int i = s, j = s + w; i < s + w; ++i, ++j) {
+          auto x = a[i], y = a[j] * t;
+          if (x.v >= Mod) x.v -= Mod;
+          a[i].v = x.v + y.v, a[j].v = x.v + (Mod - y.v);
+        }
+        t *= dt[__builtin_ctz(++k)];
+      }
+    }
+  } else {
+    for (int w = 1; w < n; w *= 2) {
+      Modular<Mod> t = 1;
+      for (int s = 0, k = 0; s < n; s += 2 * w) {
+        for (int i = s, j = s + w; i < s + w; ++i, ++j) {
+          auto x = a[i], y = a[j];
+          a[i] = x + y, a[j].v = x.v + (Mod - y.v), a[j] *= t;
+        }
+        t *= idt[__builtin_ctz(++k)];
+      }
+    }
+  }
+  auto c = 1 / Modular<Mod>(inverse ? n : 1);
+  for (auto&& e : a) e *= c;
+}
+template <unsigned Mod>
+vector<Modular<Mod>> operator*(vector<Modular<Mod>> l, vector<Modular<Mod>> r) {
+  if (l.empty() or r.empty()) return {};
+  int n = l.size(), m = r.size(), sz = 1 << __lg(2 * (n + m - 1) - 1);
+  if (min(n, m) < 30) {
+    vector<long long> res(n + m- 1);
+    for (int i = 0; i < n; ++i) for (int j = 0; j < m; ++j)
+      res[i + j] += (l[i] * r[j]).v;
+    return {begin(res), end(res)};
+  }
+  bool eq = l == r;
+  l.resize(sz), ntt(l, false);
+  if (eq) r = l;
+  else r.resize(sz), ntt(r, false);
+  for (int i = 0; i < sz; ++i) l[i] *= r[i];
+  ntt(l, true), l.resize(n + m - 1);
+  return l;
+}
+ 
+template <unsigned Mod>
+vector<Modular<Mod>> inverse(const vector<Modular<Mod>>& a) {
+  assert(not a.empty() and not (a[0] == 0));
+  vector<Modular<Mod>> b{1 / a[0]};
+  for (int m = 1; m < (int)a.size(); m *= 2) {
+    vector<Modular<Mod>> x(begin(a), begin(a) + min<int>(a.size(), 2 * m));
+    auto y = b;
+    x.resize(2 * m), ntt(x, false);
+    y.resize(2 * m), ntt(y, false);
+    for (int i = 0; i < 2 * m; ++i) x[i] *= y[i];
+    ntt(x, true);
+    fill(begin(x), begin(x) + m, 0);
+    ntt(x, false);
+    for (int i = 0; i < 2 * m; ++i) x[i] *= -y[i];
+    ntt(x, true);
+    b.insert(end(b), begin(x) + m, end(x));
+  }
+  return {begin(b), begin(b) + a.size()};
+}
+template <unsigned Mod>
+vector<Modular<Mod>> exponent(const vector<Modular<Mod>>& a) {
+  assert(a.empty() or a[0] == 0);
+  vector<Modular<Mod>> b{1, 1 < a.size() ? a[1] : 0}, c{1}, z1, z2{1, 1};
+  for (int m = 2; m < (int)a.size(); m *= 2) {
+    auto y = b;
+    y.resize(2 * m), ntt(y, false);
+    z1 = z2;
+    vector<Modular<Mod>> z(m);
+    for (int i = 0; i < m; ++i) z[i] = y[i] * z1[i];
+    ntt(z, true);
+    fill(begin(z), begin(z) + m / 2, 0);
+    ntt(z, false);
+    for (int i = 0; i < m; ++i) z[i] *= -z1[i];
+    ntt(z, true);
+    c.insert(end(c), begin(z) + m / 2, end(z));
+    z2 = c, z2.resize(2 * m), ntt(z2, false);
+    vector<Modular<Mod>> x(begin(a), begin(a) + min<int>(a.size(), m));
+    x = derivative(x), x.push_back(0), ntt(x, false);
+    for (int i = 0; i < m; ++i) x[i] *= y[i];
+    ntt(x, true);
+    x -= derivative(b);
+    x.resize(2 * m);
+    for (int i = 0; i < m - 1; ++i) x[m + i] = x[i], x[i] = 0;
+    ntt(x, false);
+    for (int i = 0; i < 2 * m; ++i) x[i] *= z2[i];
+    ntt(x, true);
+    x = primitive(x), x.pop_back();
+    for (int i = m; i < min<int>(a.size(), 2 * m); ++i) x[i] += a[i];
+    fill(begin(x), begin(x) + m, 0);
+    ntt(x, false);
+    for (int i = 0; i < 2 * m; ++i) x[i] *= y[i];
+    ntt(x, true);
+    b.insert(end(b), begin(x) + m, end(x));
+  }
+  return {begin(b), begin(b) + a.size()};
+}
+ 
+constexpr long long mod = 998244353;
+using Mint = Modular<mod>;
+//End Poly Fast
 
 int main() //Testing Zone
 {
