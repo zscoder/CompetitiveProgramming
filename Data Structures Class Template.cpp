@@ -1066,7 +1066,7 @@ struct SuffixLCPArray //to work for general alphabet remove the - 'a'
 //End Suffix + LCP Array
 
 //Start Convex Hull Trick (by christopherboo)
-struct ConvexHull 
+struct ConvexHull //insert increasing slope, queries increasing!
 {
     struct Line 
     {
@@ -1097,6 +1097,58 @@ struct ConvexHull
         while (int(d.size()) > 1 && (d[0].c - d[1].c <= x * (d[1].m - d[0].m))) d.pop_front();
         return d.front().pass(x);
     }
+};
+
+struct ConvexHull //insert increasing slope, queries arbitrary!
+{
+    struct Line 
+    {
+        ll m, c;
+
+        Line (ll _m, ll _c) : m(_m), c(_c) {}
+
+        ll pass(ll x) {
+            return m * x + c;
+        }
+    };
+    deque<Line> d;
+    bool irrelevant(Line Z) 
+    {
+        if (int(d.size()) < 2) return false;
+    
+        Line X = d[int(d.size())-2], Y = d[int(d.size())-1];
+
+        return (X.c - Z.c) * (Y.m - X.m) <= (X.c - Y.c) * (Z.m - X.m);
+    }
+    void push_line(ll m, ll c) 
+    {
+        Line l = Line(m,c);
+        while (irrelevant(l)) d.pop_back();
+        d.push_back(l);
+    }
+    ll query(ll x)
+    {
+		if(d.empty()) return 0;
+		ll ans = max(d[0].pass(x), d[int(d.size())-1].pass(x));
+		int lo = 0; int hi = int(d.size())-2;
+		while(lo<=hi)
+		{
+			int mid=(lo+hi)>>1;
+			ll v1 = d[mid].pass(x);
+			ll v2 = d[mid+1].pass(x);
+			ans=max(ans,v1);
+			ans=max(ans,v2);
+			if(v1<=v2)
+			{
+				lo=mid+1;
+			}
+			else
+			{
+				hi=mid-1;
+			}
+		}
+		return ans;
+	}
 };
 //End Convex Hull Trick
 
@@ -7552,6 +7604,101 @@ vector<Modular<Mod>> exponent(const vector<Modular<Mod>>& a) {
 constexpr long long mod = 998244353;
 using Mint = Modular<mod>;
 //End Poly Fast
+//Begin Fast Edmond
+mt19937 rd(chrono::steady_clock::now().time_since_epoch().count());
+#define rand rd
+#define loop(i, l, r) for (int (i) = (int)(l); (i) <= (int)(r); (i)++)
+
+class Edmonds {
+public:
+    int n, Time;
+    vector<int> vis, par, orig, match, aux;
+    vector<vector <int> > e;
+
+    void addEdge(int u, int v) {
+        e[u].push_back(v), e[v].push_back(u);
+    }
+
+    Edmonds() = default;
+
+    explicit Edmonds(int _n): n(_n), Time(0), vis(n + 1, 0), par(n + 1, 0),
+        orig(n + 1, 0), match(n + 1, 0), aux(n + 1, 0), e(n + 1) {}
+
+    void augment(int u, int v) {
+        int pv, nv;
+        do {
+            pv = par[v]; nv = match[pv];
+            match[v] = pv; match[pv] = v;
+            v = nv;
+        } while (u != pv);
+    }
+
+    int lca(int v, int w) {
+        ++Time;
+        while (true) {
+            if (v) {
+                if (aux[v] == Time) return v;
+                aux[v] = Time;
+                v = orig[par[match[v]]];
+            }
+            swap(v, w);
+        }
+    }
+
+    bool bfs(int u) {
+        fill(vis.begin(), vis.end(), -1);
+        iota(orig.begin(), orig.end(), 0);
+        queue<int> q;
+
+        q.push(u); vis[u] = 0;
+
+        auto blossom = [&](int v, int w, int a) {
+            while (orig[v] != a) {
+                par[v] = w; w = match[v];
+                if (vis[w] == 1) q.push(w), vis[w] = 0;
+                orig[v] = orig[w] = a;
+                v = par[w];
+            }
+        };
+
+        while (!q.empty()) {
+            auto v = q.front(); q.pop();
+            for (auto x : e[v]) {
+                if (vis[x] == -1) {
+                    par[x] = v, vis[x] = 1;
+                    if (!match[x]) return augment(u, x), true;
+                    q.push(match[x]); vis[match[x]] = 0;
+                } else if (vis[x] == 0 && orig[v] != orig[x]) {
+                    int a = lca(orig[v], orig[x]);
+                    blossom(x, v, a); blossom(v, x, a);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    int max_match() {
+        int ret = 0;
+        vector <int> V(n - 1);
+        iota(V.begin(), V.end(), 1);
+        shuffle(V.begin(), V.end(), rd);
+        for (auto u : V) {
+            if (match[u]) continue;
+            for (auto v : e[u]) {
+                if (!match[v]) {
+                    match[u] = v, match[v] = u;
+                    ++ret; break;
+                }
+            }
+        }
+        loop(i, 1, n) if (!match[i] && bfs(i)) ++ret;
+        return ret;
+    }
+};
+//End Fast Edmond
+//Seg Tree Beats
+https://github.com/tjkendev/segment-tree-beats
 
 int main() //Testing Zone
 {
